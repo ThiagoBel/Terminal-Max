@@ -1,8 +1,2 @@
-define Hello
-say
-define ,
-say
-define World
-say
-define !
-say
+define Hello, World! #; define uma variavel
+say #; mostrar no terminal a variavel salva
