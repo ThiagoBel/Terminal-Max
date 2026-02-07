@@ -15,6 +15,12 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 
 06/02/2026
 */
+#pragma comment(lib, "winmm.lib")
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
+#define _WIN32_WINNT 0x0A00
+#define WIN32_LEAN_AND_MEAN
 #define STB_IMAGE_IMPLEMENTATION
 #undef UNICODE
 #include <iostream>
@@ -22,6 +28,7 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include <algorithm>
 #include <direct.h>
 #include <windows.h>
+#include <mmsystem.h>
 #include <cctype>
 #include <cstring>
 #include <fstream>
@@ -37,17 +44,171 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include "configs/headers/icolor.hpp"
 #include "configs/headers/stb_image.h"
 #include "configs/discord/discord_rpc.h"
-std::string _DEFINE = "";          // negocio definido
-std::string _VERSION = "1.0.0";    // versao do terminal
-std::string AND_OPERATOR = "&&&&"; // o ngc de adicao de comandos
-bool exited = false;               // ve se o usuario quer sair
-bool IMAGE_CHAR_OPT = false;       // bagulho de otimização de imagens
-bool discord_disponivel = false;   // ve se o discord tá aberto pra usar o RPC
-bool _DISCORD_RPC_VALUE = true;    // ve o bagui do rpc do discord
-std::string _APELIDO = "";         // apelido do usuario
-std::string _APELIDO_WINDOWS = ""; // apelido do WINDOWS do usuario
+std::string _DEFINE = "";            // negocio definido
+std::string _VERSION = "1.1.0";      // versao do terminal
+std::string AND_OPERATOR = "&&&&";   // adicione comandos
+std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
+bool exited = false;                 // ve se o usuario quer sair
+bool IMAGE_CHAR_OPT = false;         // bagulho de otimização de imagens
+bool discord_disponivel = false;     // ve se o discord tá aberto pra usar o RPC
+bool _DISCORD_RPC_VALUE = true;      // ve o bagui do rpc do discord
+bool _PROMPT_COLOR_VALUE = true;     // cores no prompt
+bool _SOUNDS_VALUE = true;           // sons
+std::string _APELIDO = "";           // apelido do usuario
+std::string _APELIDO_WINDOWS = "";   // apelido do WINDOWS do usuario
 DiscordEventHandlers handlers;
 DiscordRichPresence presence;
+std::string GetExePath();
+
+std::wstring UTF8ToWide(const std::string &s) // transforma UTF8 pra UTF16
+{
+    int size = MultiByteToWideChar(
+        CP_UTF8,
+        0,
+        s.c_str(),
+        -1,
+        NULL,
+        0);
+
+    std::wstring result(size, 0);
+
+    MultiByteToWideChar(
+        CP_UTF8,
+        0,
+        s.c_str(),
+        -1,
+        &result[0],
+        size);
+
+    return result;
+}
+
+void PLAY_SOUND(const std::string &nome) // toca um som ou musica
+{
+    if (_SOUNDS_VALUE == true)
+    {
+        std::string caminho =
+            GetExePath() + "\\configs\\sounds\\" + nome + ".wav";
+
+        PlaySoundA(
+            caminho.c_str(),
+            NULL,
+            SND_FILENAME | SND_ASYNC);
+    }
+}
+
+void STOP_SOUND() // para a musica ou som (nunca usei isso)
+{
+    PlaySoundA(NULL, NULL, 0);
+}
+
+void REOPEN() // reabre o programa
+{
+    wchar_t caminho[MAX_PATH];
+
+    GetModuleFileNameW(NULL, caminho, MAX_PATH);
+
+    STARTUPINFOW si = {sizeof(si)};
+    PROCESS_INFORMATION pi;
+
+    if (CreateProcessW(
+            caminho, // caminho completo do exe
+            NULL,
+            NULL, NULL,
+            FALSE,
+            CREATE_NEW_CONSOLE, // cria outro console
+            NULL, NULL,
+            &si, &pi))
+    {
+        ExitProcess(0); // mata o processo atual
+    }
+}
+
+void enableANSI()
+{
+#ifdef _WIN32
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE)
+        return;
+
+    DWORD dwMode = 0;
+    if (!GetConsoleMode(hOut, &dwMode))
+        return;
+
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(hOut, dwMode);
+#endif
+}
+
+bool EhAdmin() // verifica se é admin ou n
+{
+    BOOL admin = FALSE;
+    CheckTokenMembership(NULL, NULL, &admin);
+    return admin;
+}
+
+std::string GetExePath() // pega o lugar do .exe
+{
+    char path[MAX_PATH];
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+
+    std::string full(path);
+    size_t pos = full.find_last_of("\\/");
+    return full.substr(0, pos);
+}
+
+std::string GetUserPath()
+{
+    HKEY hKey;
+    char value[8192];
+    DWORD size = sizeof(value);
+
+    if (RegOpenKeyExA(
+            HKEY_CURRENT_USER,
+            "Environment",
+            0,
+            KEY_READ,
+            &hKey) != ERROR_SUCCESS)
+        return "";
+
+    RegQueryValueExA(hKey, "Path", NULL, NULL, (LPBYTE)value, &size);
+    RegCloseKey(hKey);
+
+    return std::string(value);
+}
+
+void SetUserPath(const std::string &newPath)
+{
+    HKEY hKey;
+
+    if (RegOpenKeyExA(
+            HKEY_CURRENT_USER,
+            "Environment",
+            0,
+            KEY_SET_VALUE,
+            &hKey) != ERROR_SUCCESS)
+        return;
+
+    RegSetValueExA(
+        hKey,
+        "Path",
+        0,
+        REG_EXPAND_SZ,
+        (const BYTE *)newPath.c_str(),
+        newPath.size() + 1);
+
+    RegCloseKey(hKey);
+
+    // avisa o Windows que o PATH mudou
+    SendMessageTimeoutA(
+        HWND_BROADCAST,
+        WM_SETTINGCHANGE,
+        0,
+        (LPARAM) "Environment",
+        SMTO_ABORTIFHUNG,
+        100,
+        NULL);
+}
 
 void iniciarDiscordRPC() // RPC do discord
 {
@@ -60,7 +221,8 @@ void iniciarDiscordRPC() // RPC do discord
 
     memset(&presence, 0, sizeof(presence));
 
-    presence.details = "Terminal MAX";
+    std::string detalhes = "Terminal MAX v" + _VERSION;
+    presence.details = detalhes.c_str();
     presence.largeImageKey = "maxlogo";
     presence.largeImageText = "Terminal MAX";
     presence.startTimestamp = time(NULL);
@@ -74,41 +236,54 @@ void HELP_CMD()
 {
     std::cout << "TerminalMax v" << _VERSION << "\n\n";
 
-    std::cout << "define <valor>      - define valor temporário\n";
-    std::cout << "#define <valor>     - define valor permanente\n";
-    std::cout << "&define             - limpa valor permanente\n";
-    std::cout << "$define             - mostra valor definido\n";
-    std::cout << "terminalinfo        - informações do terminal\n";
-    std::cout << "cmdinfo             - alias de terminalinfo\n";
-    std::cout << "version             - mostra versão\n";
-    std::cout << "exit                - sai do terminal\n";
-    std::cout << "exitf               - saída forçada\n";
-    std::cout << "cls / clear         - limpa a tela\n";
-    std::cout << "help                - mostra ajuda\n";
-    std::cout << "test                - comando de teste\n";
-    std::cout << "exec                - executa programa definido\n";
-    std::cout << "run                 - executa script (.trmax)\n";
-    std::cout << "say                 - imprime valor definido\n";
-    std::cout << "mkfile / newfile    - cria arquivo\n";
-    std::cout << "mkdir / newfolder   - cria pasta\n";
-    std::cout << "rmfile / delfile    - deleta arquivo\n";
-    std::cout << "rmdir / delfolder   - deleta pasta\n";
-    std::cout << "ls / dir / $        - lista arquivos\n";
-    std::cout << "local               - muda para diretório definido\n";
-    std::cout << "$local              - mostra diretório atual\n";
-    std::cout << "to_desktop          - vai para Desktop\n";
-    std::cout << "check_storage       - mostra armazenamento\n";
-    std::cout << "$storage            - alias de check_storage\n";
-    std::cout << "$apelido            - mostra apelido\n";
-    std::cout << "$apelidos           - alias de $apelido\n";
-    std::cout << "image               - imagem -> ASCII\n";
-    std::cout << "configs             - abre menu de configs\n";
-    std::cout << "credits             - mostra todos os créditos\n";
-    std::cout << "clear_cmd           - limpa TODAS configs\n\n\n";
+    std::cout << "define <valor>        - define valor temporário\n";
+    std::cout << "#define <valor>       - define valor permanente\n";
+    std::cout << "&define               - limpa valor permanente\n";
+    std::cout << "$define               - mostra valor definido\n";
+    std::cout << "say                   - imprime valor definido\n\n";
 
-    std::cout << "--version           - mostra versão do TerminalMax\n";
-    std::cout << "--exec <cmd>        - executa comando direto\n";
-    std::cout << "--run <arquivo>     - executa script\n";
+    std::cout << "terminalinfo          - informações do terminal\n";
+    std::cout << "cmdinfo               - alias de terminalinfo\n";
+    std::cout << "version               - mostra versão\n";
+    std::cout << "help                  - mostra ajuda\n";
+    std::cout << "cls / clear            - limpa a tela\n";
+    std::cout << "exit                  - sai do terminal\n";
+    std::cout << "exitf                 - saída forçada\n";
+    std::cout << "reopen                - reinicia o terminal\n\n";
+
+    std::cout << "exec                  - executa programa definido\n";
+    std::cout << "run                   - executa script (.trmax)\n";
+    std::cout << ">                     - executa comando direto do sistema\n\n";
+
+    std::cout << "mkfile / newfile      - cria arquivo\n";
+    std::cout << "rmfile / delfile      - deleta arquivo\n";
+    std::cout << "mkdir / newfolder     - cria pasta\n";
+    std::cout << "rmdir / delfolder     - deleta pasta\n";
+    std::cout << "ls / dir / $          - lista arquivos\n\n";
+
+    std::cout << "local                 - muda para diretório definido\n";
+    std::cout << "$local                - mostra diretório atual\n";
+    std::cout << "to_desktop            - vai para Desktop\n\n";
+
+    std::cout << "check_storage         - mostra armazenamento do disco\n";
+    std::cout << "$storage              - alias de check_storage\n";
+    std::cout << "check_admin / $admin  - verifica se é administrador\n\n";
+
+    std::cout << "image                 - converte imagem para ASCII\n";
+    std::cout << "beep                  - toca som de beep\n\n";
+
+    std::cout << "configs               - abre menu de configurações\n";
+    std::cout << "clear_cmd             - apaga TODAS as configs\n\n";
+
+    std::cout << "$apelido / $apelidos  - mostra apelido\n";
+    std::cout << "credits               - mostra créditos\n\n";
+
+    std::cout << "&&&&                  - executa múltiplos comandos\n";
+    std::cout << "@@@@                  - executa comando com delay\n\n";
+
+    std::cout << "--version             - mostra versão do TerminalMax\n";
+    std::cout << "--exec <cmd>          - executa comando direto\n";
+    std::cout << "--run <arquivo>       - executa script\n";
 }
 
 void ASCII_CALL()
@@ -184,6 +359,46 @@ void PRINT_BLUE(const std::string &msg, const bool withendl)
     else
     {
         std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+    }
+}
+
+void system_path_SET(const std::string &what)
+{
+    std::string exePath = GetExePath();
+    std::string path = GetUserPath();
+
+    if (what == "add")
+    {
+        if (path.find(exePath) != std::string::npos)
+        {
+            PRINT_SYS("Terminal já está no PATH", true);
+            return;
+        }
+
+        if (!path.empty() && path.back() != ';')
+        {
+            path += ';';
+        }
+
+        path += exePath;
+        SetUserPath(path);
+    }
+    else if (what == "remove")
+    {
+        size_t pos = path.find(exePath);
+        if (pos == std::string::npos)
+        {
+            PRINT_SYS("Terminal não está no PATH", true);
+            return;
+        }
+
+        // remove ; antes ou depois
+        if (pos > 0 && path[pos - 1] == ';')
+            path.erase(pos - 1, exePath.size() + 1);
+        else
+            path.erase(pos, exePath.size());
+
+        SetUserPath(path);
     }
 }
 
@@ -438,7 +653,9 @@ std::string LerConfig(const std::string &nome)
     std::string conteudo;
 
     while (getline(file, linha))
+    {
         conteudo += linha;
+    }
 
     return trim(conteudo);
 }
@@ -629,6 +846,14 @@ void startdir_SET(const std::string &what)
         DeletarConfig("start_dir.cfg");
         PRINT_BLUE("Diretório inicial resetado para Desktop", true);
     }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
 }
 
 std::string startdir_CHECK()
@@ -648,7 +873,20 @@ void discord_rpc_SET(const std::string &what)
     {
         _DISCORD_RPC_VALUE = false;
         SalvarConfig("_DISCORD_RPC.cfg", "false");
-        Discord_Shutdown();
+        if (discord_disponivel)
+        {
+            Discord_Shutdown();
+            discord_disponivel = false;
+        }
+    }
+
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
     }
 }
 
@@ -660,9 +898,93 @@ void discord_rpc_CHECK()
     {
         _DISCORD_RPC_VALUE = true;
     }
-    else
+    else if (val == "false")
     {
         _DISCORD_RPC_VALUE = false;
+    }
+    else
+    {
+        _DISCORD_RPC_VALUE = true;
+    }
+}
+
+void prompt_color_SET(const std::string &what)
+{
+    if (what == "add")
+    {
+        _PROMPT_COLOR_VALUE = true;
+        SalvarConfig("_PROMPT_COLOR.cfg", "true");
+    }
+    else if (what == "remove")
+    {
+        _PROMPT_COLOR_VALUE = false;
+        SalvarConfig("_PROMPT_COLOR.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void prompt_color_CHECK()
+{
+    std::string val = LerConfig("_PROMPT_COLOR.cfg");
+
+    if (val == "true")
+    {
+        _PROMPT_COLOR_VALUE = true;
+    }
+    else if (val == "false")
+    {
+        _PROMPT_COLOR_VALUE = false;
+    }
+    else
+    {
+        _PROMPT_COLOR_VALUE = true;
+    }
+}
+
+void sounds_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _SOUNDS_VALUE = true;
+        SalvarConfig("_SOUNDS.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _SOUNDS_VALUE = false;
+        SalvarConfig("_SOUNDS.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void sounds_CHECK()
+{
+    std::string val = LerConfig("_SOUNDS.cfg");
+
+    if (val == "true")
+    {
+        _SOUNDS_VALUE = true;
+    }
+    else if (val == "false")
+    {
+        _SOUNDS_VALUE = false;
+    }
+    else
+    {
+        _SOUNDS_VALUE = true;
     }
 }
 
@@ -704,6 +1026,37 @@ void CONFIGS_ABA(const std::string &opt)
         };
         MOPTS::ShowMenu("Discord RPC", discordrpc_opts, "> ", "");
     }
+    else if (opt == "system_path")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Adicionar ao PATH do sistema", "add", system_path_SET},
+            {"Remover do PATH do sistema", "remove", system_path_SET},
+            {"Voltar", "voltar", system_path_SET},
+        };
+
+        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+    }
+    else if (opt == "prompt_color")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Adicionar cor no prompt", "add", prompt_color_SET},
+            {"Remover cor no prompt", "remove", prompt_color_SET},
+            {"Voltar", "voltar", prompt_color_SET},
+        };
+
+        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+    }
+    else if (opt == "sounds")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar sons", "true", sounds_SET},
+            {"Desativar sons", "false", sounds_SET},
+            {"Voltar", "voltar", sounds_SET},
+        };
+
+        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+    }
+
     else if (opt == "voltar")
     {
         // nada
@@ -753,6 +1106,16 @@ void MostrarArmazenamento(const char *drive = "C:\\")
     {
         PRINT_ERROR("Erro ao obter informações do disco", true);
     }
+}
+
+std::string RemoverComentario(const std::string &linha)
+{
+    size_t pos = linha.find("#;");
+    if (pos != std::string::npos)
+    {
+        return trim(linha.substr(0, pos));
+    }
+    return trim(linha);
 }
 
 bool RUN_SCRIPT_FILE(const std::string &arquivo);
@@ -841,11 +1204,14 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     else if (comando == "configs") // coisa lina, bonita, cheirosa e maravilhosa
     {
         MOPTS::MenuOption configs_opts[] = {
-            {"Images chars", "image_char", CONFIGS_ABA},     // Otimização das imagens
-            {"Apelido", "apelido", CONFIGS_ABA},             // Apelidos (Ao inves do nome de usuario do windows)
-            {"Diretório inicial", "start_dir", CONFIGS_ABA}, // diretorio que inicia o terminal
-            {"Discord RPC", "discord_rpc", CONFIGS_ABA},     // discord rpc (mostra que tu ta "jogando" o terminal)
-            {"Voltar", "voltar", CONFIGS_ABA},               // sai
+            {"Images chars", "image_char", CONFIGS_ABA},
+            {"Apelido", "apelido", CONFIGS_ABA},
+            {"Diretório inicial", "start_dir", CONFIGS_ABA},
+            {"Discord RPC", "discord_rpc", CONFIGS_ABA},
+            {"Cor do prompt", "prompt_color", CONFIGS_ABA},
+            {"PATH do sistema", "system_path", CONFIGS_ABA},
+            {"Sons", "sounds", CONFIGS_ABA},
+            {"Voltar", "voltar", CONFIGS_ABA},
         };
 
         MOPTS::ShowMenu("Configurações", configs_opts, "> ", "");
@@ -854,58 +1220,62 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     {
         ImagemParaASCII(_DEFINE, 100);
     }
-    else if (comando == "clear_cmd")
+    else if (comando == "clear_cmd") // limpa tudo oque o terminal fez de configuração
     {
         MOPTS::MenuOption formatar_cmd_opts[] = {
+            "Sim", "lp", [](const std::string &)
+            {
+                PRINT_SYS("\nLimpando configurações...", true);
 
-            {"SIM — limpar tudo", "lp", [](const std::string &)
+                system_path_SET("remove");
+
+                Discord_Shutdown();
+                discord_disponivel = false;
+                _DISCORD_RPC_VALUE = false;
+
+                std::string pasta = GetAppFolder();
+                WIN32_FIND_DATAA data;
+                HANDLE hFind = FindFirstFileA((pasta + "\\*").c_str(), &data);
+
+                if (hFind != INVALID_HANDLE_VALUE)
+                {
+                    do
+                    {
+                        std::string nome = data.cFileName;
+                        if (nome == "." || nome == "..")
+                        {
+                            continue;
+                        }
+
+                        std::string caminho = pasta + "\\" + nome;
+
+                        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                        {
+                            RemoveDirectoryA(caminho.c_str());
+                        }
+                        else
+                        {
+                            DeleteFileA(caminho.c_str());
+                        }
+
+                    } while (FindNextFileA(hFind, &data));
+
+                    FindClose(hFind);
+                }
+
+                _DEFINE.clear();
+                IMAGE_CHAR_OPT = false;
+                _APELIDO = _APELIDO_WINDOWS;
+                _PROMPT_COLOR_VALUE = true;
+
+                PRINT_BLUE("Tudo foi resetado com sucesso", true);
+                Sleep(500);
+                REOPEN();
+            },
+            {"Não", "nl", [](const std::string &)
              {
-                 PRINT_SYS("\nLimpando configurações...", true);
-
-                 std::string pasta = GetAppFolder();
-                 WIN32_FIND_DATAA data;
-                 HANDLE hFind = FindFirstFileA((pasta + "\\*").c_str(), &data);
-
-                 if (hFind != INVALID_HANDLE_VALUE)
-                 {
-                     do
-                     {
-                         std::string nome = data.cFileName;
-
-                         if (nome == "." || nome == "..")
-                         {
-                             continue;
-                         }
-
-                         std::string caminho = pasta + "\\" + nome;
-
-                         if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-                         {
-                             RemoveDirectoryA(caminho.c_str());
-                         }
-                         else
-                         {
-                             DeleteFileA(caminho.c_str());
-                         }
-
-                     } while (FindNextFileA(hFind, &data));
-
-                     FindClose(hFind);
-                 }
-
-                 _DEFINE = "";
-                 IMAGE_CHAR_OPT = false;
-                 _APELIDO = _APELIDO_WINDOWS;
-
-                 PRINT_BLUE("Sucesso", true);
-                 PRINT_SYS("Reinicie o terminal para aplicar tudo.", true);
-             }},
-
-            {"Cancelar", "cn", [](const std::string &)
-             {
-                 PRINT_SYS("Cancelado", true);
-             }},
-        };
+                 // nada
+             }}};
 
         MOPTS::ShowMenu(
             "isso apagará TODAS as configs do TerminalMax\nTem certeza?",
@@ -998,58 +1368,111 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     }
     else if (comando == "credits")
     {
-        PRINT_BLUE("ThiagoBel", true);
+        PRINT_BLUE("Criador do terminal : ThiagoBel", true);
+        PRINT_BLUE("Som da intro        : PixaBay - MagiaZ", true);
+        PRINT_BLUE("Som do beep         : PixaBay - freesound_community", true);
+    }
+    else if (comando == ">")
+    {
+        system(_DEFINE.c_str());
+    }
+    else if (comando == "check_admin" || comando == "$admin")
+    {
+        if (EhAdmin())
+        {
+            PRINT_SYS("true", true);
+        }
+        else
+        {
+            PRINT_SYS("false", true);
+        }
+    }
+    else if (comando == "reopen")
+    {
+        REOPEN();
+    }
+    else if (comando == "beep")
+    {
+        PLAY_SOUND("beep");
     }
     else
     {
-        PRINT_ERROR("Erro, comando desconhecido", true); // chora
+        PRINT_ERROR("Erro, comando desconhecido", true);
     }
 }
 
-void EXEC_MULTIPLE(const std::string &linha) // usa o negocio de adicao de comandos
+void EXEC_MULTIPLE(const std::string &linha)
 {
-    size_t start = 0;
-    size_t pos;
 
-    while ((pos = linha.find(AND_OPERATOR, start)) != std::string::npos) // loop pra rodar todos os comandos da linha
+    size_t pos = 0;
+    size_t nextAnd, nextDelay;
+
+    std::string restante = RemoverComentario(linha);
+
+    while (true)
     {
-        std::string cmd = trim(linha.substr(start, pos - start));
+        nextAnd = restante.find(AND_OPERATOR);
+        nextDelay = restante.find(DELAY_OPERATOR);
 
-        if (!cmd.empty())
+        size_t next;
+        bool isDelay = false;
+
+        if (nextAnd == std::string::npos && nextDelay == std::string::npos)
         {
-            COMANDOS_EXEC(cmd);
+            std::string cmd = trim(restante);
+            if (!cmd.empty())
+                COMANDOS_EXEC(cmd);
+            break;
         }
 
-        start = pos + AND_OPERATOR.length();
-    }
+        if (nextDelay != std::string::npos &&
+            (nextAnd == std::string::npos || nextDelay < nextAnd))
+        {
+            next = nextDelay;
+            isDelay = true;
+        }
+        else
+        {
+            next = nextAnd;
+        }
 
-    std::string last = trim(linha.substr(start));
+        std::string cmd = trim(restante.substr(0, next));
+        if (!cmd.empty())
+            COMANDOS_EXEC(cmd);
 
-    if (!last.empty())
-    {
-        COMANDOS_EXEC(last);
+        if (isDelay)
+        {
+            Sleep(1000);
+        }
+
+        restante.erase(0, next + (isDelay ? DELAY_OPERATOR.length() : AND_OPERATOR.length()));
     }
 }
 
 bool RUN_SCRIPT_FILE(const std::string &arquivo)
 {
-    std::ifstream file(arquivo);
+    std::wstring wpath = UTF8ToWide(arquivo);
 
-    if (!file.is_open())
+    FILE *f = _wfopen(wpath.c_str(), L"r");
+
+    if (!f)
     {
-        file.open(arquivo + ".trmax");
+        // tenta com .trmax
+        wpath = UTF8ToWide(arquivo + ".trmax");
+        f = _wfopen(wpath.c_str(), L"r");
     }
 
-    if (!file.is_open())
+    if (!f)
     {
         PRINT_ERROR("Erro, não foi possível abrir o arquivo", true);
         return false;
     }
 
-    std::string linha;
+    char buffer[4096];
 
-    while (std::getline(file, linha))
+    while (fgets(buffer, sizeof(buffer), f))
     {
+        std::string linha = buffer;
         linha = trim(linha);
 
         if (!linha.empty())
@@ -1058,11 +1481,13 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
         }
     }
 
+    fclose(f);
     return true;
 }
 
 int main(int argc, char *argv[])
 {
+    enableANSI();
     SetConsoleTitleA("Terminal MAX");
     bool ranFromArgs = false;
 
@@ -1117,7 +1542,7 @@ int main(int argc, char *argv[])
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
-
+    discord_rpc_CHECK();
     std::string startDir = startdir_CHECK();
 
     if (!startDir.empty())
@@ -1140,15 +1565,19 @@ int main(int argc, char *argv[])
     MOPTS::clear_opts = false;
     MOPTS::color = false;
     MOPTS::all_color_line = false;
+    sounds_CHECK();
     apelido_CHECK();
     image_char_CHECK();
     _DEFINE = LerConfig("H_DEFINE_.cfg"); // salva uma variavel pro terminal
-    if (_DISCORD_RPC_VALUE == true)
+    if (_DISCORD_RPC_VALUE)
     {
         iniciarDiscordRPC();
+        discord_disponivel = true;
     }
     ASCII_CALL();
     PRINT_SYS("Olá " + _APELIDO + "!", true);
+    prompt_color_CHECK();
+    PLAY_SOUND("intro");
     while (true)
     {
         if (exited == true)
@@ -1156,11 +1585,20 @@ int main(int argc, char *argv[])
             Discord_Shutdown();
             break;
         }
-        std::cout << GetCurrentPath() << " > ";
+        if (_PROMPT_COLOR_VALUE == true) // ve se pode usar cores
+        {
+            std::cout << "[" << icolor::blue() << "M" << icolor::finished() << icolor::white() << "A" << icolor::finished() << icolor::blue() << "X" << icolor::finished() << icolor::blue() << icolor::finished() << icolor::neon_green() << "@" << icolor::finished() << icolor::gray_10() << GetCurrentPath() << icolor::finished() << "]> ";
+        }
+        else
+        {
+            std::cout << "[MAX@" << GetCurrentPath() << "]> ";
+        }
+
         std::string cmd;        // salva oq usuario digitou
         getline(std::cin, cmd); // input
 
         EXEC_MULTIPLE(cmd); // executa todos os comandos usados
     }
+    Discord_Shutdown();
     return 0; // so retorna que o programa deu tudo certo
 } // cabou
