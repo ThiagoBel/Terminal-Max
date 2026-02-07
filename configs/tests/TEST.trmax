@@ -1,2 +1,2 @@
 define Hello, World! #; define uma variavel
-say #; mostrar no terminal a variavel salva
+sayln #; mostrar no terminal a variavel salva

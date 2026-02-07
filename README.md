@@ -57,5 +57,18 @@ Ou use a flag:
 
 - Todas as informações são todas salvas em `%LOCALAPPDATA%\TerminalMax`
 
-## Recomendações
-- Recomendando botar a pasta do arquivo dentro de ```"C:\Program Files (x86)"```
+## Operadores
+
+Operadores são formas de enviar multiplos códigos em uma única linha
+
+### Delay
+Para fazer um operador de delay em milissegundos, apenas usar '*@@@@[VALOR]*', exemplo:
+```
+define Hello, World! @@@@1000 say
+```
+
+### Adição
+Para fazer um operador de adição, apenas usar '*&&&&*', exemplo:
+```
+define Hello, World! &&&& say
+```
