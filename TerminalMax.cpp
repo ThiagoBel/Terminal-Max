@@ -51,7 +51,7 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include "configs/headers/stb_image.h"
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
-std::string _VERSION = "1.1.2";      // versao do terminal
+std::string _VERSION = "1.1.3";      // versao do terminal
 std::string AND_OPERATOR = "&&&&";   // adicione comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
 bool exited = false;                 // ve se o usuario quer sair
@@ -189,10 +189,10 @@ int calcularExpressao(const std::string &expr) // matematica safada
             return a * b;
         case '/':
             if (b == 0)
-                throw std::runtime_error("Erro divisão por zero"); // animal
+                throw std::runtime_error("Erro, divisão por zero"); // animal
             return a / b;
         default:
-            throw std::runtime_error("Erro operador inválido"); // precisa ser extremamente burro pra acontecer isso, não é possivel
+            throw std::runtime_error("Erro, operador inválido"); // precisa ser extremamente burro pra acontecer isso, não é possivel
         }
     };
 
@@ -219,7 +219,7 @@ int calcularExpressao(const std::string &expr) // matematica safada
             int n;
             if (!(in >> n))
             {
-                throw std::runtime_error("Erro número inválido"); // quem faz isso deve cometer prisao perpetua
+                throw std::runtime_error("Erro, número inválido"); // quem faz isso deve cometer prisao perpetua
             }
             numeros.push(n);
         }
@@ -229,7 +229,7 @@ int calcularExpressao(const std::string &expr) // matematica safada
             {
                 if (numeros.size() < 2)
                 {
-                    throw std::runtime_error("Erro expressão inválida");
+                    throw std::runtime_error("Erro, expressão inválida");
                 }
                 int b = numeros.top();
                 numeros.pop();
@@ -1189,11 +1189,25 @@ void CONFIGS_ABA(const std::string &opt)
     }
 }
 
-std::string GetDesktopPath()
+std::wstring GetDesktopPath()
 {
-    char path[MAX_PATH];
-    SHGetFolderPathA(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, path);
-    return std::string(path);
+    wchar_t wpath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DESKTOPDIRECTORY, NULL, 0, wpath)))
+    {
+        return std::wstring(wpath);
+    }
+    return L"";
+}
+
+bool IrParaDesktop()
+{
+    std::wstring desktop = GetDesktopPath();
+    if (desktop.empty()) 
+    {
+        PRINT_ERROR("Não foi possível localizar a área de trabalho", true);
+        return false;
+    }
+    return SetCurrentDirectoryW(desktop.c_str());
 }
 
 void MostrarArmazenamento(const char *drive = "C:\\")
@@ -1520,7 +1534,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     }
     else if (comando == "to_desktop")
     {
-        ChangeDirectory(GetDesktopPath());
+        ChangeDirectory(WideToUTF8(GetDesktopPath()), false);
     }
     else if (comando == "check_storage" || comando == "$storage")
     {
@@ -2049,12 +2063,12 @@ int main(int argc, char *argv[])
     {
         if (!ChangeDirectory(startDir, false))
         {
-            ChangeDirectory(GetDesktopPath(), false);
+            ChangeDirectory(WideToUTF8(GetDesktopPath()), false);
         }
     }
     else
     {
-        ChangeDirectory(GetDesktopPath(), false);
+        ChangeDirectory(WideToUTF8(GetDesktopPath()), false);
     }
 
     char user[UNLEN + 1];
