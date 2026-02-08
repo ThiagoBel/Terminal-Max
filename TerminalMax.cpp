@@ -22,7 +22,9 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #define _WIN32_WINNT 0x0A00
 #define WIN32_LEAN_AND_MEAN
 #define STB_IMAGE_IMPLEMENTATION
-#undef UNICODE
+#define UNICODE
+#define _UNICODE
+#include <windows.h>
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -36,18 +38,20 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include <fstream>
 #include <locale>
 #include <shlobj.h>
+#include <random>
 #include <string>
 #include <cstdio>
 #include <Lmcons.h>
 #include <fcntl.h>
 #include <io.h>
 
+#include "configs/headers/notify.h"
 #include "configs/headers/MOPTS.h"
 #include "configs/headers/icolor.hpp"
 #include "configs/headers/stb_image.h"
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
-std::string _VERSION = "1.1.1";      // versao do terminal
+std::string _VERSION = "1.1.2";      // versao do terminal
 std::string AND_OPERATOR = "&&&&";   // adicione comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
 bool exited = false;                 // ve se o usuario quer sair
@@ -61,348 +65,9 @@ std::string _APELIDO = "";           // apelido do usuario
 std::string _APELIDO_WINDOWS = "";   // apelido do WINDOWS do usuario
 DiscordEventHandlers handlers;
 DiscordRichPresence presence;
+std::random_device rd;
+std::mt19937 gen(rd());
 std::string GetExePath();
-
-std::wstring UTF8ToWide(const std::string &s) // transforma UTF8 pra UTF16
-{
-    int size = MultiByteToWideChar(
-        CP_UTF8,
-        0,
-        s.c_str(),
-        -1,
-        NULL,
-        0);
-
-    std::wstring result(size, 0);
-
-    MultiByteToWideChar(
-        CP_UTF8,
-        0,
-        s.c_str(),
-        -1,
-        &result[0],
-        size);
-
-    return result;
-}
-
-int calcularExpressao(const std::string &expr)
-{
-    std::stack<int> numeros;
-    std::stack<char> ops;
-
-    auto aplicar = [](int a, int b, char op) -> int
-    {
-        switch (op)
-        {
-        case '+':
-            return a + b;
-        case '-':
-            return a - b;
-        case '*':
-            return a * b;
-        case '/':
-            if (b == 0)
-                throw std::runtime_error("Divisão por zero");
-            return a / b;
-        default:
-            throw std::runtime_error("Operador inválido");
-        }
-    };
-
-    auto prioridade = [](char op) -> int
-    {
-        if (op == '+' || op == '-')
-            return 1;
-        if (op == '*' || op == '/')
-            return 2;
-        return 0;
-    };
-
-    std::istringstream in(expr);
-    char token;
-    while (in >> token)
-    {
-        if (std::isdigit(token))
-        {
-            in.putback(token);
-            int n;
-            if (!(in >> n))
-                throw std::runtime_error("Número inválido");
-            numeros.push(n);
-        }
-        else if (token == '+' || token == '-' || token == '*' || token == '/')
-        {
-            while (!ops.empty() && prioridade(ops.top()) >= prioridade(token))
-            {
-                if (numeros.size() < 2)
-                    throw std::runtime_error("Expressão inválida");
-
-                int b = numeros.top();
-                numeros.pop();
-                int a = numeros.top();
-                numeros.pop();
-                char op = ops.top();
-                ops.pop();
-
-                numeros.push(aplicar(a, b, op));
-            }
-            ops.push(token);
-        }
-        else
-        {
-            throw std::runtime_error(std::string("Token inválido: ") + token);
-        }
-    }
-
-    while (!ops.empty())
-    {
-        if (numeros.size() < 2)
-            throw std::runtime_error("Expressão inválida");
-
-        int b = numeros.top();
-        numeros.pop();
-        int a = numeros.top();
-        numeros.pop();
-        char op = ops.top();
-        ops.pop();
-
-        numeros.push(aplicar(a, b, op));
-    }
-
-    if (numeros.size() != 1)
-        throw std::runtime_error("Expressão inválida");
-
-    return numeros.top();
-}
-
-void PLAY_SOUND(const std::string &nome) // toca um som ou musica
-{
-    if (_SOUNDS_VALUE == true)
-    {
-        std::string caminho =
-            GetExePath() + "\\configs\\sounds\\" + nome + ".wav";
-
-        PlaySoundA(
-            caminho.c_str(),
-            NULL,
-            SND_FILENAME | SND_ASYNC);
-    }
-}
-
-void STOP_SOUND() // para a musica ou som (nunca usei isso)
-{
-    PlaySoundA(NULL, NULL, 0);
-}
-
-void REOPEN() // reabre o programa
-{
-    wchar_t caminho[MAX_PATH];
-
-    GetModuleFileNameW(NULL, caminho, MAX_PATH);
-
-    STARTUPINFOW si = {sizeof(si)};
-    PROCESS_INFORMATION pi;
-
-    if (CreateProcessW(
-            caminho, // caminho completo do exe
-            NULL,
-            NULL, NULL,
-            FALSE,
-            CREATE_NEW_CONSOLE, // cria outro console
-            NULL, NULL,
-            &si, &pi))
-    {
-        ExitProcess(0); // mata o processo atual
-    }
-}
-
-void enableANSI()
-{
-#ifdef _WIN32
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (hOut == INVALID_HANDLE_VALUE)
-        return;
-
-    DWORD dwMode = 0;
-    if (!GetConsoleMode(hOut, &dwMode))
-        return;
-
-    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hOut, dwMode);
-#endif
-}
-
-bool EhAdmin() // verifica se é admin ou n
-{
-    BOOL admin = FALSE;
-    CheckTokenMembership(NULL, NULL, &admin);
-    return admin;
-}
-
-std::string GetExePath() // pega o lugar do .exe
-{
-    char path[MAX_PATH];
-    GetModuleFileNameA(NULL, path, MAX_PATH);
-
-    std::string full(path);
-    size_t pos = full.find_last_of("\\/");
-    return full.substr(0, pos);
-}
-
-std::string GetUserPath()
-{
-    HKEY hKey;
-    char value[8192];
-    DWORD size = sizeof(value);
-
-    if (RegOpenKeyExA(
-            HKEY_CURRENT_USER,
-            "Environment",
-            0,
-            KEY_READ,
-            &hKey) != ERROR_SUCCESS)
-        return "";
-
-    RegQueryValueExA(hKey, "Path", NULL, NULL, (LPBYTE)value, &size);
-    RegCloseKey(hKey);
-
-    return std::string(value);
-}
-
-void SetUserPath(const std::string &newPath)
-{
-    HKEY hKey;
-
-    if (RegOpenKeyExA(
-            HKEY_CURRENT_USER,
-            "Environment",
-            0,
-            KEY_SET_VALUE,
-            &hKey) != ERROR_SUCCESS)
-        return;
-
-    RegSetValueExA(
-        hKey,
-        "Path",
-        0,
-        REG_EXPAND_SZ,
-        (const BYTE *)newPath.c_str(),
-        newPath.size() + 1);
-
-    RegCloseKey(hKey);
-
-    // avisa o Windows que o PATH mudou
-    SendMessageTimeoutA(
-        HWND_BROADCAST,
-        WM_SETTINGCHANGE,
-        0,
-        (LPARAM) "Environment",
-        SMTO_ABORTIFHUNG,
-        100,
-        NULL);
-}
-
-void iniciarDiscordRPC() // RPC do discord
-{
-    memset(&handlers, 0, sizeof(handlers));
-    Discord_Initialize(
-        "1469464608749256805", // Application ID
-        &handlers,
-        1,
-        NULL);
-
-    memset(&presence, 0, sizeof(presence));
-
-    std::string detalhes = "Terminal MAX v" + _VERSION;
-    presence.details = detalhes.c_str();
-    presence.largeImageKey = "maxlogo";
-    presence.largeImageText = "Terminal MAX";
-    presence.startTimestamp = time(NULL);
-
-    Discord_UpdatePresence(&presence);
-
-    discord_disponivel = true;
-}
-
-void HELP_CMD()
-{
-    std::cout << "TerminalMax v" << _VERSION << "\n\n";
-
-    std::cout << "define <valor>            - define valor\n";
-    std::cout << "#define <valor>           - define valor permanente\n";
-    std::cout << "$define                   - mostra valor definido\n";
-    std::cout << "&define                   - limpa os valores salvo\n";
-    std::cout << "sayln                     - mostra algo no terminal pulando linha no final\n";
-    std::cout << "say                       - mostra algo no terminal\n";
-    std::cout << "terminalinfo              - informações do terminal\n";
-    std::cout << "cmdinfo                   - alias de terminalinfo\n";
-    std::cout << "version                   - mostra versão\n";
-    std::cout << "help                      - mostra ajuda\n";
-    std::cout << "cls / clear               - limpa a tela\n";
-    std::cout << "calcc                     - calcula algo\n";
-    std::cout << "run                       - executa script (.trmax)\n";
-    std::cout << "exit                      - sai do terminal\n";
-    std::cout << "exitf                     - saída forçada\n";
-    std::cout << "reopen                    - reinicia o terminal\n";
-    std::cout << "exec                      - executa programa definido\n";
-    std::cout << ">                         - executa comando direto do sistema\n";
-    std::cout << "mkfile / newfile          - cria arquivo\n";
-    std::cout << "rmfile / delfile          - deleta arquivo\n";
-    std::cout << "mkdir / newfolder         - cria pasta\n";
-    std::cout << "rmdir / delfolder         - deleta pasta\n";
-    std::cout << "ls / dir / $              - lista arquivos\n";
-    std::cout << "local                     - muda para diretório definido\n";
-    std::cout << "$local                    - mostra diretório atual\n";
-    std::cout << "check_storage             - mostra armazenamento do disco\n";
-    std::cout << "$storage                  - alias de check_storage\n";
-    std::cout << "to_desktop                - vai para Desktop\n";
-    std::cout << "time                      - mostra a hora\n";
-    std::cout << "check_admin / $admin      - verifica se é administrador\n";
-    std::cout << "image                     - converte imagem para ASCII\n";
-    std::cout << "clear_cmd                 - apaga TODAS as configs\n";
-    std::cout << "beep                      - toca som de beep\n";
-    std::cout << "configs                   - abre menu de configurações\n";
-    std::cout << "roll                      - escolhe um numero aleatorio\n";
-    std::cout << "date                      - mostra a data\n";
-    std::cout << "kill                      - mata uma tarefa\n";
-    std::cout << "$tasks / tasks / tasklist - lista todas as tarefas\n";
-    std::cout << "$apelido / $apelidos      - mostra apelido\n";
-    std::cout << "credits                   - mostra créditos\n";
-    std::cout << "&&&&                      - executa múltiplos comandos\n";
-    std::cout << "@@@@<valor>               - executa comando com delay\n";
-    std::cout << "--version                 - mostra versão do TerminalMax\n";
-    std::cout << "--exec <cmd>              - executa comando direto\n";
-    std::cout << "--run <arquivo>           - executa script\n";
-}
-
-void ASCII_CALL()
-{
-    std::cout << icolor::blue() << R"( _/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\_______/\\\________ )" << icolor::finished() << std::endl;
-    std::cout << icolor::blue() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/__)" << _VERSION << "_" << icolor::finished() << std::endl;
-    std::cout << icolor::blue() << R"( __\/\\\//\\\____/\\\//\\\__/\\\/////////\\\___\///\\\\\\/_________ )" << icolor::finished() << std::endl;
-    std::cout << icolor::white() << R"( ___\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_____\//\\\\__________ )" << icolor::finished() << std::endl;
-    std::cout << icolor::white() << R"( ____\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\______\/\\\\_________ )" << icolor::finished() << std::endl;
-    std::cout << icolor::white() << R"( _____\/\\\____\///_____\/\\\_\/\\\/////////\\\______/\\\\\\_______ )" << icolor::finished() << std::endl;
-    std::cout << icolor::blue() << R"( ______\/\\\_____________\/\\\_\/\\\_______\/\\\____/\\\////\\\____ )" << icolor::finished() << std::endl;
-    std::cout << icolor::blue() << R"( _______\/\\\_____________\/\\\_\/\\\_______\/\\\__/\\\/___\///\\\_ )" << icolor::finished() << std::endl;
-    std::cout << icolor::blue() << R"( ________\///______________\///__\///________\///__\///_______\///_ )" << icolor::finished() << std::endl;
-}
-
-std::wstring ReadUnicodeLine()
-{
-    std::wstring input;
-    std::getline(std::wcin, input);
-    return input;
-}
-
-std::string toLower(std::string s)
-{
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c)
-                   { return std::tolower(c); });
-    return s;
-}
 
 void PRINT_ERROR(const std::string &msg, const bool withendl)
 {
@@ -450,6 +115,373 @@ void PRINT_BLUE(const std::string &msg, const bool withendl)
     {
         std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
     }
+}
+
+std::wstring UTF8ToWide(const std::string &s) // transforma UTF8 pra UTF16
+{
+    int size = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, NULL, 0);
+
+    std::wstring result(size, 0);
+
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, &result[0], size);
+
+    return result;
+}
+
+std::string TO_UPPER(std::string texto) // grita
+{
+    std::transform(texto.begin(), texto.end(), texto.begin(),
+                   [](unsigned char c)
+                   {
+                       return std::toupper(c);
+                   });
+    return texto;
+}
+
+std::string TO_LOWER(std::string texto) // fala baixo
+{
+    std::transform(texto.begin(), texto.end(), texto.begin(),
+                   [](unsigned char c)
+                   {
+                       return std::tolower(c);
+                   });
+    return texto;
+}
+
+std::string CAPITALIZE(std::string texto) // deixa mais formal
+{
+    bool novaPalavra = true;
+
+    for (char &c : texto)
+    {
+        if (std::isspace((unsigned char)c))
+        {
+            novaPalavra = true;
+        }
+        else if (novaPalavra)
+        {
+            c = std::toupper((unsigned char)c);
+            novaPalavra = false;
+        }
+        else
+        {
+            c = std::tolower((unsigned char)c);
+        }
+    }
+
+    return texto;
+}
+
+int calcularExpressao(const std::string &expr) // matematica safada
+{
+    std::stack<int> numeros;
+    std::stack<char> ops;
+
+    auto aplicar = [](int a, int b, char op) -> int
+    {
+        switch (op)
+        {
+        case '+':
+            return a + b;
+        case '-':
+            return a - b;
+        case '*':
+            return a * b;
+        case '/':
+            if (b == 0)
+                throw std::runtime_error("Erro divisão por zero"); // animal
+            return a / b;
+        default:
+            throw std::runtime_error("Erro operador inválido"); // precisa ser extremamente burro pra acontecer isso, não é possivel
+        }
+    };
+
+    auto prioridade = [](char op) -> int
+    {
+        if (op == '+' || op == '-')
+        {
+            return 1;
+        }
+        if (op == '*' || op == '/')
+        {
+            return 2;
+        }
+        return 0;
+    };
+
+    std::istringstream in(expr);
+    char token;
+    while (in >> token)
+    {
+        if (std::isdigit(token))
+        {
+            in.putback(token);
+            int n;
+            if (!(in >> n))
+            {
+                throw std::runtime_error("Erro número inválido"); // quem faz isso deve cometer prisao perpetua
+            }
+            numeros.push(n);
+        }
+        else if (token == '+' || token == '-' || token == '*' || token == '/')
+        {
+            while (!ops.empty() && prioridade(ops.top()) >= prioridade(token))
+            {
+                if (numeros.size() < 2)
+                {
+                    throw std::runtime_error("Erro expressão inválida");
+                }
+                int b = numeros.top();
+                numeros.pop();
+                int a = numeros.top();
+                numeros.pop();
+                char op = ops.top();
+                ops.pop();
+
+                numeros.push(aplicar(a, b, op));
+            }
+            ops.push(token);
+        }
+        else
+        {
+            throw std::runtime_error("Erro, token inválido");
+        }
+    }
+
+    while (!ops.empty())
+    {
+        if (numeros.size() < 2)
+        {
+            throw std::runtime_error("Expressão inválida");
+        }
+        int b = numeros.top();
+        numeros.pop();
+        int a = numeros.top();
+        numeros.pop();
+        char op = ops.top();
+        ops.pop();
+
+        numeros.push(aplicar(a, b, op));
+    }
+
+    if (numeros.size() != 1)
+    {
+        throw std::runtime_error("Expressão inválida");
+    }
+    return numeros.top();
+}
+
+void PLAY_SOUND(const std::string &nome) // toca um som ou musica
+{
+    if (_SOUNDS_VALUE == true)
+    {
+        std::string caminho = GetExePath() + "\\configs\\sounds\\" + nome + ".wav";
+
+        PlaySoundA(caminho.c_str(), NULL, SND_FILENAME | SND_ASYNC);
+    }
+}
+
+void STOP_SOUND() // para a musica ou som (nunca usei isso)
+{
+    PlaySoundA(NULL, NULL, 0);
+}
+
+void REOPEN() // reabre o programa
+{
+    wchar_t caminho[MAX_PATH];
+
+    GetModuleFileNameW(NULL, caminho, MAX_PATH);
+
+    STARTUPINFOW si = {sizeof(si)};
+    PROCESS_INFORMATION pi;
+
+    if (CreateProcessW(caminho, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi))
+    {
+        ExitProcess(0); // mata o processo atual
+    }
+}
+
+void enableANSI()
+{
+#ifdef _WIN32
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+    DWORD dwMode = 0;
+    if (!GetConsoleMode(hOut, &dwMode))
+    {
+        return;
+    }
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(hOut, dwMode);
+#endif
+}
+
+bool EhAdmin()
+{
+    BOOL isAdmin = FALSE;
+    HANDLE token = NULL;
+
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
+    {
+        TOKEN_ELEVATION elevation;
+        DWORD size;
+        if (GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &size))
+        {
+            isAdmin = elevation.TokenIsElevated;
+        }
+        CloseHandle(token);
+    }
+
+    return isAdmin != FALSE;
+}
+std::string GetExePath() // pega o lugar do .exe
+{
+    char path[MAX_PATH];
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+
+    std::string full(path);
+    size_t pos = full.find_last_of("\\/");
+    return full.substr(0, pos);
+}
+
+std::string GetUserPath()
+{
+    HKEY hKey;
+    char value[8192];
+    DWORD size = sizeof(value);
+
+    if (RegOpenKeyExA(HKEY_CURRENT_USER, "Environment", 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+    {
+        return "";
+    }
+    RegQueryValueExA(hKey, "Path", NULL, NULL, (LPBYTE)value, &size);
+    RegCloseKey(hKey);
+
+    return std::string(value);
+}
+
+void SetUserPath(const std::string &newPath)
+{
+    HKEY hKey;
+
+    if (RegOpenKeyExA(HKEY_CURRENT_USER, "Environment", 0, KEY_SET_VALUE, &hKey) != ERROR_SUCCESS)
+    {
+        return;
+    }
+    RegSetValueExA(hKey, "Path", 0, REG_EXPAND_SZ, (const BYTE *)newPath.c_str(), newPath.size() + 1);
+
+    RegCloseKey(hKey);
+
+    // avisa o Windows que o PATH mudou
+    SendMessageTimeoutA(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM) "Environment", SMTO_ABORTIFHUNG, 100, NULL);
+}
+
+void iniciarDiscordRPC() // RPC do discord
+{
+    memset(&handlers, 0, sizeof(handlers));
+    Discord_Initialize("1469464608749256805", &handlers, 1, NULL);
+
+    memset(&presence, 0, sizeof(presence));
+
+    std::string detalhes = "Terminal MAX v" + _VERSION;
+    presence.details = detalhes.c_str();
+    presence.largeImageKey = "maxlogo";
+    presence.largeImageText = "Terminal MAX";
+    presence.startTimestamp = time(NULL);
+
+    Discord_UpdatePresence(&presence);
+
+    discord_disponivel = true;
+}
+
+void HELP_CMD()
+{
+    std::cout << "TerminalMax v" << _VERSION << "\n\n";
+
+    std::cout << "define <valor>            - define valor\n";
+    std::cout << "#define <valor>           - define valor permanente\n";
+    std::cout << "$define                   - mostra valor definido\n";
+    std::cout << "&define                   - limpa os valores salvo\n";
+    std::cout << "sayln                     - mostra algo no terminal pulando linha no final\n";
+    std::cout << "say                       - mostra algo no terminal\n";
+    std::cout << "terminalinfo              - informações do terminal\n";
+    std::cout << "cmdinfo                   - alias de terminalinfo\n";
+    std::cout << "version                   - mostra versão\n";
+    std::cout << "help                      - mostra ajuda\n";
+    std::cout << "cls / clear               - limpa a tela\n";
+    std::cout << "calcc                     - calcula algo\n";
+    std::cout << "run                       - executa script (.trmax)\n";
+    std::cout << "exit                      - sai do terminal\n";
+    std::cout << "exitf                     - saída forçada\n";
+    std::cout << "reopen                    - reinicia o terminal\n";
+    std::cout << "exec                      - executa programa definido\n";
+    std::cout << "open                      - executa programa ou site definido\n";
+    std::cout << ">                         - executa comando direto do sistema\n";
+    std::cout << "mkfile / newfile          - cria arquivo\n";
+    std::cout << "rmfile / delfile          - deleta arquivo\n";
+    std::cout << "mkdir / newfolder         - cria pasta\n";
+    std::cout << "rmdir / delfolder         - deleta pasta\n";
+    std::cout << "ls / dir / $              - lista arquivos\n";
+    std::cout << "local                     - muda para diretório definido\n";
+    std::cout << "$local                    - mostra diretório atual\n";
+    std::cout << "check_storage             - mostra armazenamento do disco\n";
+    std::cout << "$storage                  - alias de check_storage\n";
+    std::cout << "to_desktop                - vai para Desktop\n";
+    std::cout << "time                      - mostra a hora\n";
+    std::cout << "check_admin / $admin      - verifica se é administrador\n";
+    std::cout << "image                     - converte imagem para ASCII\n";
+    std::cout << "clear_cmd                 - apaga TODAS as configs\n";
+    std::cout << "beep                      - toca som de beep\n";
+    std::cout << "configs                   - abre menu de configurações\n";
+    std::cout << "roll                      - escolhe um numero aleatorio\n";
+    std::cout << "date                      - mostra a data\n";
+    std::cout << "kill                      - mata uma tarefa\n";
+    std::cout << "$tasks / tasks / tasklist - lista todas as tarefas\n";
+    std::cout << "$apelido / $apelidos      - mostra apelido\n";
+    std::cout << "credits                   - mostra créditos\n";
+    std::cout << "notify                    - mostra uma notificação\n\n";
+    std::cout << "upper                     - transforma o define tudo em maiusculo\n";
+    std::cout << "lower                     - transforma o define tudo em minusculo\n";
+    std::cout << "capitalize                - primeiro caractere de uma palavra fica maiusculo e o resto minusculo, deixando mais formal\n";
+    std::cout << "len                       - mostra a quantidade de caracteres em uma frase/palavra\n";
+
+    std::cout << "&&&&                      - executa múltiplos comandos\n";
+    std::cout << "@@@@<valor>               - executa comando com delay\n\n";
+
+    std::cout << "--version                 - mostra versão do TerminalMax\n";
+    std::cout << "--exec <cmd>              - executa comando direto\n";
+    std::cout << "--run <arquivo>           - executa script\n";
+}
+
+void ASCII_CALL()
+{
+    std::cout << icolor::blue() << R"( _/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\_______/\\\________ )" << icolor::finished() << std::endl;
+    std::cout << icolor::blue() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/__)" << _VERSION << "_" << icolor::finished() << std::endl;
+    std::cout << icolor::blue() << R"( __\/\\\//\\\____/\\\//\\\__/\\\/////////\\\___\///\\\\\\/_________ )" << icolor::finished() << std::endl;
+    std::cout << icolor::white() << R"( ___\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_____\//\\\\__________ )" << icolor::finished() << std::endl;
+    std::cout << icolor::white() << R"( ____\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\______\/\\\\_________ )" << icolor::finished() << std::endl;
+    std::cout << icolor::white() << R"( _____\/\\\____\///_____\/\\\_\/\\\/////////\\\______/\\\\\\_______ )" << icolor::finished() << std::endl;
+    std::cout << icolor::blue() << R"( ______\/\\\_____________\/\\\_\/\\\_______\/\\\____/\\\////\\\____ )" << icolor::finished() << std::endl;
+    std::cout << icolor::blue() << R"( _______\/\\\_____________\/\\\_\/\\\_______\/\\\__/\\\/___\///\\\_ )" << icolor::finished() << std::endl;
+    std::cout << icolor::blue() << R"( ________\///______________\///__\///________\///__\///_______\///_ )" << icolor::finished() << std::endl;
+}
+
+std::wstring ReadUnicodeLine()
+{
+    std::wstring input;
+    std::getline(std::wcin, input);
+    return input;
+}
+
+std::string toLower(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+    return s;
 }
 
 void system_path_SET(const std::string &what)
@@ -1210,6 +1242,42 @@ std::string RemoverComentario(const std::string &linha)
 
 bool RUN_SCRIPT_FILE(const std::string &arquivo);
 
+void OPEN(const std::string &caminhoOuURL) // abre
+{
+    if (caminhoOuURL.empty())
+    {
+        PRINT_ERROR("Erro caminho ou URL vazio", true);
+        return;
+    }
+
+    std::string pathFixed = caminhoOuURL;
+    for (size_t i = 0; i < pathFixed.size(); ++i)
+    {
+        if (pathFixed[i] == '\\')
+        {
+            pathFixed.insert(i, "\\");
+            ++i;
+        }
+    }
+
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, pathFixed.c_str(), -1, nullptr, 0);
+    std::wstring wCaminho(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, pathFixed.c_str(), -1, &wCaminho[0], size_needed);
+
+    HINSTANCE result = ShellExecuteW(
+        NULL,
+        L"open",
+        wCaminho.c_str(),
+        NULL,
+        NULL,
+        SW_SHOWNORMAL);
+
+    if ((INT_PTR)result <= 32)
+    {
+        PRINT_ERROR("Erro ao abrir", true);
+    }
+}
+
 void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 {
     std::string comandoA = trim(comandoOriginal);
@@ -1269,39 +1337,36 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     }
     else if (comando == "exec")
     {
-        // pega comando completo
-        std::string cmd = _DEFINE;
-        if (cmd.empty())
+        std::string caminho = _DEFINE;
+        if (caminho.empty())
         {
-            PRINT_ERROR("Nenhum comando especificado", true);
+            PRINT_ERROR("Nenhum arquivo especificado", true);
             return;
         }
 
-        STARTUPINFOA si = {sizeof(si)};
-        PROCESS_INFORMATION pi;
+        // Confirma se o arquivo existe
+        int size = MultiByteToWideChar(CP_UTF8, 0, caminho.c_str(), -1, nullptr, 0);
+        std::wstring wCaminho(size, 0);
+        MultiByteToWideChar(CP_UTF8, 0, caminho.c_str(), -1, &wCaminho[0], size);
 
-        char cmdBuffer[1024];
-        strncpy(cmdBuffer, cmd.c_str(), sizeof(cmdBuffer) - 1);
-        cmdBuffer[sizeof(cmdBuffer) - 1] = '\0';
-
-        if (!CreateProcessA(
-                NULL,      // NULL para procurar no PATH
-                cmdBuffer, // comando + argumentos
-                NULL, NULL,
-                FALSE,
-                0,
-                NULL, NULL,
-                &si,
-                &pi))
+        DWORD attr = GetFileAttributesW(wCaminho.c_str());
+        if (attr == INVALID_FILE_ATTRIBUTES || (attr & FILE_ATTRIBUTE_DIRECTORY))
         {
-            DWORD err = GetLastError();
-            PRINT_ERROR("Erro ao executar comando (erro " + std::to_string(err) + ")", true);
+            PRINT_ERROR("Erro Arquivo não encontrado ou é uma pasta", true);
+            return;
         }
-        else
+
+        HINSTANCE result = ShellExecuteW(
+            NULL,
+            L"open",
+            wCaminho.c_str(),
+            NULL,
+            NULL,
+            SW_SHOWNORMAL);
+
+        if ((INT_PTR)result <= 32)
         {
-            WaitForSingleObject(pi.hProcess, INFINITE);
-            CloseHandle(pi.hProcess);
-            CloseHandle(pi.hThread);
+            PRINT_ERROR("Erro ao abrir arquivo (código " + std::to_string((INT_PTR)result) + ")", true);
         }
     }
 
@@ -1609,7 +1674,161 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
             PRINT_ERROR("Erro ao calcular a expressão", true);
         }
     }
+    else if (comando == "notify")
+    {
+        if (_DEFINE.empty())
+        {
+            return;
+        }
+        std::vector<std::string> partes;
+        std::string temp = _DEFINE;
+        size_t pos = 0;
+        while ((pos = temp.find("//")) != std::string::npos)
+        {
+            std::string token = temp.substr(0, pos);
+            token.erase(0, token.find_first_not_of(" \t"));
+            token.erase(token.find_last_not_of(" \t") + 1);
+            partes.push_back(token);
+            temp.erase(0, pos + 2);
+        }
 
+        temp.erase(0, temp.find_first_not_of(" \t"));
+        temp.erase(temp.find_last_not_of(" \t") + 1);
+        partes.push_back(temp);
+
+        std::string mensagem = partes.size() > 0 ? partes[0] : "";
+        std::string titulo = partes.size() > 1 ? partes[1] : "Aviso";
+        std::string iconStr = partes.size() > 2 ? partes[2] : "info";
+        std::string buttonsStr = partes.size() > 3 ? partes[3] : "ok";
+
+        notify::NotifyIcon icon = notify::NotifyIcon::Information;
+        std::transform(iconStr.begin(), iconStr.end(), iconStr.begin(), ::tolower);
+        if (iconStr == "info" || iconStr == "information")
+        {
+            icon = notify::NotifyIcon::Information;
+        }
+        else if (iconStr == "warning")
+        {
+            icon = notify::NotifyIcon::Warning;
+        }
+        else if (iconStr == "error")
+        {
+            icon = notify::NotifyIcon::Error;
+        }
+        else if (iconStr == "question")
+        {
+            icon = notify::NotifyIcon::Question;
+        }
+        else
+        {
+            icon = notify::NotifyIcon::None;
+        }
+        notify::NotifyButtons buttons = notify::NotifyButtons::Ok;
+        std::transform(buttonsStr.begin(), buttonsStr.end(), buttonsStr.begin(), ::tolower);
+        if (buttonsStr == "ok")
+        {
+            buttons = notify::NotifyButtons::Ok;
+        }
+        else if (buttonsStr == "okcancel")
+        {
+            buttons = notify::NotifyButtons::OkCancel;
+        }
+        else if (buttonsStr == "yesno")
+        {
+            buttons = notify::NotifyButtons::YesNo;
+        }
+        else if (buttonsStr == "yesnocancel")
+        {
+            buttons = notify::NotifyButtons::YesNoCancel;
+        }
+        else if (buttonsStr == "retrycancel")
+        {
+            buttons = notify::NotifyButtons::RetryCancel;
+        }
+
+        notify::notify(mensagem.c_str(), titulo.c_str(), icon, buttons);
+    }
+    else if (comando == "power")
+    {
+        if (_DEFINE == "off")
+        {
+            system("shutdown /s /t 0");
+        }
+        else if (_DEFINE == "reset")
+        {
+            system("shutdown /r /t 0");
+        }
+        else if (_DEFINE == "cancel")
+        {
+            system("shutdown /a");
+        }
+        else
+        {
+            PRINT_ERROR("Erro, use apenas 'off', 'cancel' ou 'reset'", true);
+        }
+    }
+    else if (comando == "upper")
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada para converter", true);
+            return;
+        }
+
+        _DEFINE = TO_UPPER(_DEFINE);
+    }
+    else if (comando == "lower")
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada para converter", true);
+            return;
+        }
+
+        _DEFINE = TO_LOWER(_DEFINE);
+    }
+    else if (comando == "capitalize")
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada para capitalizar", true);
+            return;
+        }
+
+        _DEFINE = CAPITALIZE(_DEFINE);
+    }
+    else if (comando == "len")
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada para medir", true);
+            return;
+        }
+
+        PRINT_BLUE(std::to_string(_DEFINE.length()), true);
+    }
+    else if (comando == "open")
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada definido para abrir", true);
+            return;
+        }
+
+        OPEN(_DEFINE);
+    }
+
+    else if (comando == "takefood")
+    {
+        std::vector<std::string> comidas = {
+            "🍎", "🍌", "🍕", "🍔", "🍟",
+            "🌭", "🍣", "🍩", "🍪", "🍫",
+            "🍿", "🥗", "🥩", "🍜", "🍝"};
+
+        std::uniform_int_distribution<> distrib(0, comidas.size() - 1);
+        int i = distrib(gen);
+        PRINT_SYS(comidas[i], true);
+    }
     else // ou da erro ou executa qualquer ngc no path
     {
         std::string cmd = comandoOriginal;
@@ -1622,15 +1841,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
             strncpy(cmdBuffer, cmd.c_str(), sizeof(cmdBuffer) - 1);
             cmdBuffer[sizeof(cmdBuffer) - 1] = '\0';
 
-            if (!CreateProcessA(
-                    NULL,
-                    cmdBuffer,
-                    NULL, NULL,
-                    FALSE,
-                    0,
-                    NULL, NULL,
-                    &si,
-                    &pi))
+            if (!CreateProcessA(NULL, cmdBuffer, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
             {
                 // DWORD err = GetLastError();
                 PRINT_ERROR("Comando não reconhecido", true);
@@ -1747,8 +1958,7 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
 
     if (!f)
     {
-        // tenta com .trmax
-        wpath = UTF8ToWide(arquivo + ".trmax");
+        wpath = UTF8ToWide(arquivo + ".trmax"); // tenta com .trmax
         f = _wfopen(wpath.c_str(), L"r");
     }
 
@@ -1865,7 +2075,7 @@ int main(int argc, char *argv[])
         discord_disponivel = true;
     }
     ASCII_CALL();
-    PRINT_SYS("Olá " + _APELIDO + "!", true);
+    PRINT_SYS("Olá " + CAPITALIZE(_APELIDO) + "!", true);
     prompt_color_CHECK();
     PLAY_SOUND("intro");
     while (true)
