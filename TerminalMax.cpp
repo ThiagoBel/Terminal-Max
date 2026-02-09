@@ -51,8 +51,8 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include "configs/headers/stb_image.h"
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
-std::string _VERSION = "1.1.3";      // versao do terminal
-std::string AND_OPERATOR = "&&&&";   // adicione comandos
+std::string _VERSION = "1.1.4";      // versao do terminal
+std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
 bool exited = false;                 // ve se o usuario quer sair
 bool pularlinhaw = false;            // só pro prompt não ficar fei
@@ -61,6 +61,7 @@ bool discord_disponivel = false;     // ve se o discord tá aberto pra usar o RP
 bool _DISCORD_RPC_VALUE = true;      // ve o bagui do rpc do discord
 bool _PROMPT_COLOR_VALUE = true;     // cores no prompt
 bool _SOUNDS_VALUE = true;           // sons
+bool _DEFINE_CMD = true;             // comandos direto do DEFINE
 std::string _APELIDO = "";           // apelido do usuario
 std::string _APELIDO_WINDOWS = "";   // apelido do WINDOWS do usuario
 DiscordEventHandlers handlers;
@@ -447,13 +448,23 @@ void HELP_CMD()
     std::cout << "lower                     - transforma o define tudo em minusculo\n";
     std::cout << "capitalize                - primeiro caractere de uma palavra fica maiusculo e o resto minusculo, deixando mais formal\n";
     std::cout << "len                       - mostra a quantidade de caracteres em uma frase/palavra\n";
+    std::cout << "title                     - muda o título\n";
 
     std::cout << "&&&&                      - executa múltiplos comandos\n";
-    std::cout << "@@@@<valor>               - executa comando com delay\n\n";
+    std::cout << "@@@@<valor>               - executa comando com delay (em milissegundos)\n\n";
 
     std::cout << "--version                 - mostra versão do TerminalMax\n";
     std::cout << "--exec <cmd>              - executa comando direto\n";
-    std::cout << "--run <arquivo>           - executa script\n";
+    std::cout << "--run <arquivo>           - executa script\n\n";
+
+    std::cout << "define cmd=DESKTOP_       - salva no define o diretório do desktop\n";
+    std::cout << "define cmd=THISPATH_      - salva no define o diretório atual\n";
+    std::cout << "define cmd=STARTDIR_      - salva no define o diretório definido nas configurações\n";
+    std::cout << "define cmd=LASTCOMMAND_   - salva no define o ultimo comando usado\n";
+    std::cout << "define cmd=ISADMIN_       - salva no define se o TerminalMax está rodando como admin ou não\n";
+    std::cout << "define cmd=USERNAME_      - salva no define o nome de usuário\n";
+    std::cout << "define cmd=COMPUTERNAME_  - salva no define o nome do computador do usuário\n";
+    std::cout << "define cmd=VERSION_       - salva no define a versão do TerminalMa\n";
 }
 
 void ASCII_CALL()
@@ -574,50 +585,6 @@ void CriarPasta(const std::string &nome)
     }
 }
 
-void ListarArquivos(const std::string &dir)
-{
-    std::string caminho;
-
-    if (dir.empty())
-    {
-        caminho = "*";
-    }
-    else
-    {
-        caminho = dir + "\\*";
-    }
-
-    WIN32_FIND_DATAA data;
-    HANDLE hFind = FindFirstFileA(caminho.c_str(), &data);
-
-    if (hFind == INVALID_HANDLE_VALUE)
-    {
-        PRINT_ERROR("Erro, diretório inválido ou vazio", true);
-        return;
-    }
-
-    do
-    {
-        std::string nome = data.cFileName;
-
-        if (nome == "." || nome == "..")
-        {
-            continue;
-        }
-
-        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            PRINT_BLUE(nome + " [DIR]", true);
-        }
-        else
-        {
-            PRINT_SYS(nome, true);
-        }
-
-    } while (FindNextFileA(hFind, &data));
-
-    FindClose(hFind);
-}
 std::string WideToUTF8(const std::wstring &w)
 {
     int size = WideCharToMultiByte(
@@ -702,6 +669,67 @@ bool ChangeDirectory(const std::string &path, bool showError = true)
     }
 
     return false;
+}
+
+void ListarArquivos(const std::string &dir)
+{
+    std::string base = dir.empty() ? GetCurrentPath() : dir;
+
+    if (!DirectoryExists(base))
+    {
+        PRINT_ERROR("Erro, diretório não existe -> " + base, true);
+        return;
+    }
+
+    std::wstring wbase = UTF8ToWide(base + "\\*");
+
+    WIN32_FIND_DATAW data;
+    HANDLE hFind = FindFirstFileW(wbase.c_str(), &data);
+
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        DWORD err = GetLastError();
+
+        if (err == ERROR_FILE_NOT_FOUND)
+        {
+            PRINT_SYS("Diretório vazio", true);
+        }
+        else
+        {
+            PRINT_ERROR("Erro ao acessar diretório", true);
+        }
+        return;
+    }
+
+    bool encontrouAlgo = false;
+
+    do
+    {
+        std::wstring wnome = data.cFileName;
+        std::string nome = WideToUTF8(wnome);
+
+        if (nome == "." || nome == "..")
+            continue;
+
+        encontrouAlgo = true;
+
+        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            PRINT_BLUE(nome + " [DIR]", true);
+        }
+        else
+        {
+            PRINT_SYS(nome, true);
+        }
+
+    } while (FindNextFileW(hFind, &data));
+
+    FindClose(hFind);
+
+    if (!encontrouAlgo)
+    {
+        PRINT_SYS("Diretório vazio", true);
+    }
 }
 
 void CLEAR_TERMINAL()
@@ -1110,6 +1138,46 @@ void sounds_CHECK()
     }
 }
 
+void define_cmd_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _DEFINE_CMD = true;
+        SalvarConfig("_DEFINE_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _DEFINE_CMD = false;
+        SalvarConfig("_DEFINE_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void define_cmd_CHECK()
+{
+    std::string val = LerConfig("_DEFINE_CMD.cfg");
+
+    if (val == "true")
+    {
+        _DEFINE_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _DEFINE_CMD = false;
+    }
+    else
+    {
+        _DEFINE_CMD = true;
+    }
+}
+
 void CONFIGS_ABA(const std::string &opt)
 {
     if (opt == "image_char")
@@ -1178,6 +1246,16 @@ void CONFIGS_ABA(const std::string &opt)
 
         MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
     }
+    else if (opt == "define_cmd")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar comandos no define", "true", define_cmd_SET},
+            {"Desativar comandos no define", "false", define_cmd_SET},
+            {"Voltar", "voltar", define_cmd_SET},
+        };
+
+        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+    }
 
     else if (opt == "voltar")
     {
@@ -1202,7 +1280,7 @@ std::wstring GetDesktopPath()
 bool IrParaDesktop()
 {
     std::wstring desktop = GetDesktopPath();
-    if (desktop.empty()) 
+    if (desktop.empty())
     {
         PRINT_ERROR("Não foi possível localizar a área de trabalho", true);
         return false;
@@ -1292,6 +1370,52 @@ void OPEN(const std::string &caminhoOuURL) // abre
     }
 }
 
+void DEFINE_COMMANDS()
+{
+    if (_DEFINE_CMD == true)
+    {
+        if (_DEFINE == "cmd=DESKTOP_")
+        {
+            _DEFINE = WideToUTF8(GetDesktopPath());
+        }
+        else if (_DEFINE == "cmd=THISPATH_")
+        {
+            _DEFINE = GetCurrentPath();
+        }
+        else if (_DEFINE == "cmd=STARTDIR_")
+        {
+            _DEFINE = LerConfig("start_dir.cfg");
+        }
+        else if (_DEFINE == "cmd=LASTCOMMAND_")
+        {
+            _DEFINE = LerConfig("_LAST_COMMAND.cfg");
+        }
+        else if (_DEFINE == "cmd=ISADMIN_")
+        {
+            _DEFINE = EhAdmin() ? "true" : "false";
+        }
+        else if (_DEFINE == "cmd=USERNAME_")
+        {
+            _DEFINE = _APELIDO_WINDOWS;
+        }
+        else if (_DEFINE == "cmd=COMPUTERNAME_")
+        {
+            char name[MAX_COMPUTERNAME_LENGTH + 1];
+            DWORD size = sizeof(name);
+            GetComputerNameA(name, &size);
+            _DEFINE = name;
+        }
+        else if (_DEFINE == "cmd=VERSION_")
+        {
+            _DEFINE = _VERSION;
+        }
+        else if (_DEFINE == "cmd=TEST_")
+        {
+            _DEFINE = "test";
+        }
+    }
+}
+
 void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 {
     std::string comandoA = trim(comandoOriginal);
@@ -1316,11 +1440,13 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     if (comando == "define") // salva uma variavel
     {
         _DEFINE = cmdArg;
+        DEFINE_COMMANDS();
     }
     else if (comando == "#define") // salva uma variavel "permanente"
     {
         _DEFINE = cmdArg;
-        SalvarConfig("H_DEFINE_.cfg", cmdArg);
+        DEFINE_COMMANDS();
+        SalvarConfig("H_DEFINE_.cfg", _DEFINE);
     }
     else if (comando == "&define") // deleta o valor da variavel salva permanentemente e limpa o valor da variavel normal
     {
@@ -1394,6 +1520,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
             {"Cor do prompt", "prompt_color", CONFIGS_ABA},
             {"PATH do sistema", "system_path", CONFIGS_ABA},
             {"Sons", "sounds", CONFIGS_ABA},
+            {"Comandos do define", "define_cmd", CONFIGS_ABA},
             {"Voltar", "voltar", CONFIGS_ABA},
         };
 
@@ -1831,7 +1958,6 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 
         OPEN(_DEFINE);
     }
-
     else if (comando == "takefood")
     {
         std::vector<std::string> comidas = {
@@ -1842,6 +1968,10 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         std::uniform_int_distribution<> distrib(0, comidas.size() - 1);
         int i = distrib(gen);
         PRINT_SYS(comidas[i], true);
+    }
+    else if (comando == "title")
+    {
+        SetConsoleTitleA(_DEFINE.c_str());
     }
     else // ou da erro ou executa qualquer ngc no path
     {
@@ -1868,6 +1998,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
             }
         }
     }
+    SalvarConfig("_LAST_COMMAND.cfg", comandoOriginal);
 }
 
 void EXEC_MULTIPLE(const std::string &linha)
@@ -2080,6 +2211,7 @@ int main(int argc, char *argv[])
     MOPTS::color = false;
     MOPTS::all_color_line = false;
     sounds_CHECK();
+    define_cmd_CHECK();
     apelido_CHECK();
     image_char_CHECK();
     _DEFINE = LerConfig("H_DEFINE_.cfg"); // salva uma variavel pro terminal
