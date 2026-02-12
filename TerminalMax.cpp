@@ -12,6 +12,7 @@ Olá!!!!!!
 Esse projeto foi criado por github.com/ThiagoBel
 Esse projeto foi feito apenas para facilitar o uso do terminal, com comandos mais fáceis e curtos
 Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para Linux também
+Criado no C++11
 
 06/02/2026
 */
@@ -41,6 +42,7 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include <random>
 #include <string>
 #include <cstdio>
+#include <cwchar>
 #include <Lmcons.h>
 #include <fcntl.h>
 #include <io.h>
@@ -51,24 +53,45 @@ Atualmente só poderá servir para Windows, mas tentaremos no futuro deixar para
 #include "configs/headers/stb_image.h"
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
-std::string _VERSION = "1.1.4";      // versao do terminal
+std::string _VERSION = "1.1.5";      // versao do terminal
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
-bool exited = false;                 // ve se o usuario quer sair
-bool pularlinhaw = false;            // só pro prompt não ficar fei
-bool IMAGE_CHAR_OPT = false;         // bagulho de otimização de imagens
-bool discord_disponivel = false;     // ve se o discord tá aberto pra usar o RPC
-bool _DISCORD_RPC_VALUE = true;      // ve o bagui do rpc do discord
-bool _PROMPT_COLOR_VALUE = true;     // cores no prompt
-bool _SOUNDS_VALUE = true;           // sons
-bool _DEFINE_CMD = true;             // comandos direto do DEFINE
-std::string _APELIDO = "";           // apelido do usuario
-std::string _APELIDO_WINDOWS = "";   // apelido do WINDOWS do usuario
+
+std::string _VAR_1 = ""; // Variavel 1
+std::string _VAR_2 = ""; // Variavel 2
+std::string _VAR_3 = ""; // Variavel 3
+std::string _VAR_4 = ""; // Variavel 4
+std::string _VAR_5 = ""; // Variavel 5
+std::string _VAR_6 = ""; // Variavel 6
+std::string _VAR_7 = ""; // Variavel 7
+
+bool exited = false;                // ve se o usuario quer sair
+bool pularlinhaw = false;           // só pro prompt não ficar fei
+bool metenodefine = false;          // ve se bota a resposta do cmd no define
+bool IMAGE_CHAR_OPT = false;        // bagulho de otimização de imagens
+std::string ultimamsgterminal = ""; // salva a ultima msg do sistema
+bool discord_disponivel = false;    // ve se o discord tá aberto pra usar o RPC
+bool _DISCORD_RPC_VALUE = true;     // ve o bagui do rpc do discord
+bool _PROMPT_COLOR_VALUE = true;    // cores no prompt
+bool _SOUNDS_VALUE = true;          // sons
+bool _DEFINE_CMD = true;            // comandos direto do DEFINE
+std::string _APELIDO = "";          // apelido do usuario
+std::string _APELIDO_WINDOWS = "";  // apelido do WINDOWS do usuario
 DiscordEventHandlers handlers;
 DiscordRichPresence presence;
 std::random_device rd;
 std::mt19937 gen(rd());
 std::string GetExePath();
+
+void COPIAR_PRO_DEFINE(const std::string &MSG)
+{
+    ultimamsgterminal = MSG;
+    if (metenodefine == true)
+    {
+        _DEFINE = MSG;
+    }
+    metenodefine = false;
+}
 
 void PRINT_ERROR(const std::string &msg, const bool withendl)
 {
@@ -84,6 +107,7 @@ void PRINT_ERROR(const std::string &msg, const bool withendl)
     {
         std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
     }
+    COPIAR_PRO_DEFINE(msg);
 }
 
 void PRINT_SYS(const std::string &msg, const bool withendl)
@@ -100,6 +124,7 @@ void PRINT_SYS(const std::string &msg, const bool withendl)
     {
         std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
     }
+    COPIAR_PRO_DEFINE(msg);
 }
 
 void PRINT_BLUE(const std::string &msg, const bool withendl)
@@ -116,6 +141,7 @@ void PRINT_BLUE(const std::string &msg, const bool withendl)
     {
         std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
     }
+    COPIAR_PRO_DEFINE(msg);
 }
 
 std::wstring UTF8ToWide(const std::string &s) // transforma UTF8 pra UTF16
@@ -400,71 +426,124 @@ void iniciarDiscordRPC() // RPC do discord
 
 void HELP_CMD()
 {
-    std::cout << "TerminalMax v" << _VERSION << "\n\n";
+    std::cout << "Terminal MAX v" << _VERSION << "\n\n";
 
-    std::cout << "define <valor>            - define valor\n";
-    std::cout << "#define <valor>           - define valor permanente\n";
-    std::cout << "$define                   - mostra valor definido\n";
-    std::cout << "&define                   - limpa os valores salvo\n";
-    std::cout << "sayln                     - mostra algo no terminal pulando linha no final\n";
-    std::cout << "say                       - mostra algo no terminal\n";
-    std::cout << "terminalinfo              - informações do terminal\n";
-    std::cout << "cmdinfo                   - alias de terminalinfo\n";
-    std::cout << "version                   - mostra versão\n";
-    std::cout << "help                      - mostra ajuda\n";
-    std::cout << "cls / clear               - limpa a tela\n";
-    std::cout << "calcc                     - calcula algo\n";
-    std::cout << "run                       - executa script (.trmax)\n";
-    std::cout << "exit                      - sai do terminal\n";
-    std::cout << "exitf                     - saída forçada\n";
-    std::cout << "reopen                    - reinicia o terminal\n";
-    std::cout << "exec                      - executa programa definido\n";
-    std::cout << "open                      - executa programa ou site definido\n";
-    std::cout << ">                         - executa comando direto do sistema\n";
-    std::cout << "mkfile / newfile          - cria arquivo\n";
-    std::cout << "rmfile / delfile          - deleta arquivo\n";
-    std::cout << "mkdir / newfolder         - cria pasta\n";
-    std::cout << "rmdir / delfolder         - deleta pasta\n";
-    std::cout << "ls / dir / $              - lista arquivos\n";
-    std::cout << "local                     - muda para diretório definido\n";
-    std::cout << "$local                    - mostra diretório atual\n";
-    std::cout << "check_storage             - mostra armazenamento do disco\n";
-    std::cout << "$storage                  - alias de check_storage\n";
-    std::cout << "to_desktop                - vai para Desktop\n";
-    std::cout << "time                      - mostra a hora\n";
-    std::cout << "check_admin / $admin      - verifica se é administrador\n";
-    std::cout << "image                     - converte imagem para ASCII\n";
-    std::cout << "clear_cmd                 - apaga TODAS as configs\n";
-    std::cout << "beep                      - toca som de beep\n";
-    std::cout << "configs                   - abre menu de configurações\n";
-    std::cout << "roll                      - escolhe um numero aleatorio\n";
-    std::cout << "date                      - mostra a data\n";
-    std::cout << "kill                      - mata uma tarefa\n";
-    std::cout << "$tasks / tasks / tasklist - lista todas as tarefas\n";
-    std::cout << "$apelido / $apelidos      - mostra apelido\n";
-    std::cout << "credits                   - mostra créditos\n";
-    std::cout << "notify                    - mostra uma notificação\n\n";
-    std::cout << "upper                     - transforma o define tudo em maiusculo\n";
-    std::cout << "lower                     - transforma o define tudo em minusculo\n";
-    std::cout << "capitalize                - primeiro caractere de uma palavra fica maiusculo e o resto minusculo, deixando mais formal\n";
-    std::cout << "len                       - mostra a quantidade de caracteres em uma frase/palavra\n";
-    std::cout << "title                     - muda o título\n";
+    std::cout << "--          Comandos do terminal          --\n";
+    std::cout << "define <valor>             - define valor\n";
+    std::cout << "#define <valor>            - define valor permanente\n";
+    std::cout << "$define                    - mostra valor definido\n";
+    std::cout << "&define                    - limpa os valores salvo\n";
+    std::cout << "sayln                      - mostra algo no terminal pulando linha no final\n";
+    std::cout << "say                        - mostra algo no terminal\n";
+    std::cout << "terminalinfo               - informações do terminal\n";
+    std::cout << "cmdinfo                    - alias de terminalinfo\n";
+    std::cout << "version                    - mostra versão\n";
+    std::cout << "help                       - mostra ajuda\n";
+    std::cout << "cls / clear                - limpa a tela\n";
+    std::cout << "calcc                      - calcula algo\n";
+    std::cout << "run                        - executa script (.trmax)\n";
+    std::cout << "exit                       - sai do terminal\n";
+    std::cout << "exitf                      - saída forçada\n";
+    std::cout << "exitbf                     - saída BRUTALMENTE forçada\n";
+    std::cout << "reopen                     - reinicia o terminal\n";
+    std::cout << "exec                       - executa programa definido\n";
+    std::cout << "open                       - executa programa ou site definido\n";
+    std::cout << ">                          - executa comando direto do sistema\n";
+    std::cout << "mkfile / newfile           - cria arquivo\n";
+    std::cout << "rmfile / delfile           - deleta arquivo\n";
+    std::cout << "mkdir / newfolder          - cria pasta\n";
+    std::cout << "rmdir / delfolder          - deleta pasta\n";
+    std::cout << "ls / dir / $               - lista arquivos\n";
+    std::cout << "local                      - muda para diretório definido\n";
+    std::cout << "$local                     - mostra diretório atual\n";
+    std::cout << "check_storage              - mostra armazenamento do disco\n";
+    std::cout << "$storage                   - alias de check_storage\n";
+    std::cout << "to_desktop                 - vai para Desktop\n";
+    std::cout << "time                       - mostra a hora\n";
+    std::cout << "check_admin / $admin       - verifica se é administrador\n";
+    std::cout << "image                      - converte imagem para ASCII\n";
+    std::cout << "clear_cmd                  - apaga TODAS as configs\n";
+    std::cout << "beep                       - toca som de beep\n";
+    std::cout << "configs                    - abre menu de configurações\n";
+    std::cout << "roll                       - escolhe um numero aleatorio\n";
+    std::cout << "date                       - mostra a data\n";
+    std::cout << "kill                       - mata uma tarefa\n";
+    std::cout << "$tasks / tasks / tasklist  - lista todas as tarefas\n";
+    std::cout << "$apelido / $apelidos       - mostra apelido\n";
+    std::cout << "credits                    - mostra créditos\n";
+    std::cout << "notify                     - mostra uma notificação, modelo: (MENSAGEM // TITULO // ICONE // BOTOES)\n";
+    std::cout << "content                    - Edita um arquivo (veja as informações de como usar em 'Mais informações')\n";
+    std::cout << "upper                      - transforma o define tudo em maiusculo\n";
+    std::cout << "lower                      - transforma o define tudo em minusculo\n";
+    std::cout << "capitalize                 - primeiro caractere de uma palavra fica maiusculo e o resto minusculo, deixando mais formal\n";
+    std::cout << "len                        - mostra a quantidade de caracteres em uma frase/palavra\n";
+    std::cout << "title                      - muda o título\n";
+    std::cout << "save_var                   - salva uma variavel (explico melhor no 'Mais informações')\n\n";
 
-    std::cout << "&&&&                      - executa múltiplos comandos\n";
-    std::cout << "@@@@<valor>               - executa comando com delay (em milissegundos)\n\n";
+    std::cout << "--          Operadores do terminal          --\n";
+    std::cout << "&&&&                       - executa múltiplos comandos\n";
+    std::cout << "@@@@<valor>                - executa comando com delay (em milissegundos)\n\n";
 
-    std::cout << "--version                 - mostra versão do TerminalMax\n";
-    std::cout << "--exec <cmd>              - executa comando direto\n";
-    std::cout << "--run <arquivo>           - executa script\n\n";
+    std::cout << "--          Flags do terminal          --\n";
+    std::cout << "--version                  - mostra versão do Terminal MAX\n";
+    std::cout << "--exec <cmd>               - executa comando direto\n";
+    std::cout << "--run <arquivo>            - executa script\n\n";
 
-    std::cout << "define cmd=DESKTOP_       - salva no define o diretório do desktop\n";
-    std::cout << "define cmd=THISPATH_      - salva no define o diretório atual\n";
-    std::cout << "define cmd=STARTDIR_      - salva no define o diretório definido nas configurações\n";
-    std::cout << "define cmd=LASTCOMMAND_   - salva no define o ultimo comando usado\n";
-    std::cout << "define cmd=ISADMIN_       - salva no define se o TerminalMax está rodando como admin ou não\n";
-    std::cout << "define cmd=USERNAME_      - salva no define o nome de usuário\n";
-    std::cout << "define cmd=COMPUTERNAME_  - salva no define o nome do computador do usuário\n";
-    std::cout << "define cmd=VERSION_       - salva no define a versão do TerminalMa\n";
+    std::cout << "--          Comandos via define          --\n";
+    std::cout << "define [cmd=DESKTOP_]      - salva no define o diretório do desktop\n";
+    std::cout << "define [cmd=THISPATH_]     - salva no define o diretório atual\n";
+    std::cout << "define [cmd=STARTDIR_]     - salva no define o diretório definido nas configurações\n";
+    std::cout << "define [cmd=LASTCOMMAND_]  - salva no define o ultimo comando usado\n";
+    std::cout << "define [cmd=ISADMIN_]      - salva no define se o Terminal MAX está rodando como admin ou não\n";
+    std::cout << "define [cmd=USERNAME_]     - salva no define o nome de usuário\n";
+    std::cout << "define [cmd=COMPUTERNAME_] - salva no define o nome do computador do usuário\n";
+    std::cout << "define [cmd=VERSION_]      - salva no define a versão do Terminal MAX\n";
+    std::cout << "define [cmd=NEXTMSG_]      - salva no define a próxima mensagem do terminal\n";
+    std::cout << "define [cmd=LASTMSG_]      - salva no define a ultima mensagem do terminal\n";
+    std::cout << "define [cmd=VAR1_]         - salva no define a variavel numero 1 definida\n";
+    std::cout << "define [cmd=VAR2_]         - salva no define a variavel numero 2 definida\n";
+    std::cout << "define [cmd=VAR3_]         - salva no define a variavel numero 3 definida\n";
+    std::cout << "define [cmd=VAR4_]         - salva no define a variavel numero 4 definida\n";
+    std::cout << "define [cmd=VAR5_]         - salva no define a variavel numero 5 definida\n";
+    std::cout << "define [cmd=VAR6_]         - salva no define a variavel numero 6 definida\n";
+    std::cout << "define [cmd=VAR7_]         - salva no define a variavel numero 7 definida\n\n\n";
+
+    std::cout << "--          Mais informações          --\n\n";
+    std::cout << "-        Como usar o Terminal MAX?                -\n";
+    std::cout << "Para abrir as configurações use o comando 'configs' e use as teclas W/S (ou as setinhas de cima e baixo) para navegar e espaço ou enter para selecionar.\n";
+    std::cout << "O Terminal MAX não é direto, ou seja, você precisa definir tudo o que precisa, exemplo:\n";
+    std::cout << "Para falar algo no terminal, geralmente alguns terminais usam 'echo Hello, World!', porem no Terminal MAX é diferente, primeiro precisamos definir uma variável: 'define Hello, World!', depois falaremos no programa 'say' / 'sayln', ficando assim:\n";
+    std::cout << "'define Hello, World!'\n";
+    std::cout << "'say'\n";
+    std::cout << "Ou se quiser tudo em uma linha, usaremos operadores, que será o próximo tema. \n\n";
+
+    std::cout << "-        Como usa os operadores?                -\n";
+    std::cout << "Você usa os operadores para adicionar mais comando em uma linha, segue o exemplo: \n";
+    std::cout << "'define Hello, World! &&&& sayln', isso vai definir a mensagem e usar o sayln ao mesmo tempo \n";
+    std::cout << "'define Hello, World! @@@@2000 sayln', isso faz que ele defina uma variavel, e fale o sayln depois de 2000 milesimos (2 segundos) \n\n";
+
+    std::cout << "-        Como usar comando direto no define?                -\n";
+    std::cout << "Você pode usar esses comando direto, para ser mais facil o uso do define, exemplo:\n";
+    std::cout << "'define versão: [cmd=VERSION_]' vai salvar no define: 'versão: " << _VERSION << "' \n";
+    std::cout << "'define username: [cmd=USERNAME_]' vai salvar no define: 'username: " << _APELIDO_WINDOWS << "' \n\n";
+
+    std::cout << "-        Como editar arquivos?                -\n";
+    std::cout << "Para editar/limpar arquivos, você precisa usar o comando 'content', segue o exemplo:\n";
+    std::cout << "'define Arquivo.txt -> Conteudo', isso faz que substitua TUDO dentro de 'Arquivo.txt'\n";
+    std::cout << "'define Arquivo.txt ->> Conteudo', isso faz que adicione algo dentro de 'Arquivo.txt'\n";
+    std::cout << "'define Arquivo.txt ->n> Conteudo', isso faz que adicione algo com '\\n' no final (pula linha) dentro de 'Arquivo.txt'\n";
+    std::cout << "'define Arquivo.txt -R', isso faz que limpe tudo dentro de 'Arquivo.txt'\n";
+    std::cout << "Detalhe: ele já cria um arquivo se não tiver\n";
+    std::cout << "Diferentes de alguns outros comandos, se você quiser colar em forma de CAMINHO, você precisa usar aspas dentro, exemplo:\n";
+    std::cout << "'\"C:\\CAMINHO\\DO\\ARQUIVO\"'\n";
+    std::cout << "Depois, para executar use 'content'\n\n";
+
+    std::cout << "-        Como salva variaveis?                -\n";
+    std::cout << "Para salvar uma variavel, tem dois jeitos: 'save_var' ou 'define'\n";
+    std::cout << "Para salvar várias variaveis, use: 'save_var', pois tem até 7 slots de variaveis\n";
+    std::cout << "Já o 'define' tem apenas 1\n";
+    std::cout << "Para usar o save_var, basta usar: 'define X - CONTEUDO' (troque X pelo numero de slot [slots: 7])\n";
+    std::cout << "Para usar o slot, basta usar: 'define [cmd=VARX_]' (troque X pelo slot que você quer, exemplo: 'define [cmd=VAR1_]')\n\n";
 }
 
 void ASCII_CALL()
@@ -493,6 +572,20 @@ std::string toLower(std::string s)
                    [](unsigned char c)
                    { return std::tolower(c); });
     return s;
+}
+
+std::wstring GetFullPath(const std::wstring &path)
+{
+    wchar_t buffer[MAX_PATH];
+
+    DWORD len = GetFullPathNameW(path.c_str(), MAX_PATH, buffer, nullptr);
+
+    if (len == 0 || len > MAX_PATH)
+    {
+        return L"";
+    }
+
+    return std::wstring(buffer);
 }
 
 void system_path_SET(const std::string &what)
@@ -654,11 +747,13 @@ bool ChangeDirectory(const std::string &path, bool showError = true)
         return false;
     }
 
-    int size = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0); // Converte UTF-8 para UTF-16
+    int size = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0);
     std::wstring wpath(size, 0);
     MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, &wpath[0], size);
 
-    if (SetCurrentDirectoryW(wpath.c_str())) // Tenta mudar o diretório
+    std::wstring fullPath = GetFullPath(wpath);
+
+    if (!fullPath.empty() && SetCurrentDirectoryW(fullPath.c_str()))
     {
         return true;
     }
@@ -1370,50 +1465,60 @@ void OPEN(const std::string &caminhoOuURL) // abre
     }
 }
 
+void ReplaceDefine(const std::string &token, const std::string &value)
+{
+    size_t pos = 0;
+
+    while ((pos = _DEFINE.find(token, pos)) != std::string::npos)
+    {
+        _DEFINE.replace(pos, token.length(), value);
+        pos += value.length();
+    }
+}
+
 void DEFINE_COMMANDS()
 {
-    if (_DEFINE_CMD == true)
+    if (_DEFINE_CMD)
     {
-        if (_DEFINE == "cmd=DESKTOP_")
+        ReplaceDefine("[cmd=DESKTOP_]", WideToUTF8(GetDesktopPath()));
+        ReplaceDefine("[cmd=THISPATH_]", GetCurrentPath());
+        ReplaceDefine("[cmd=STARTDIR_]", LerConfig("start_dir.cfg"));
+        ReplaceDefine("[cmd=LASTCOMMAND_]", LerConfig("_LAST_COMMAND.cfg"));
+        ReplaceDefine("[cmd=ISADMIN_]", EhAdmin() ? "true" : "false");
+        ReplaceDefine("[cmd=USERNAME_]", _APELIDO_WINDOWS);
+
+        char name[MAX_COMPUTERNAME_LENGTH + 1];
+        DWORD size = sizeof(name);
+        GetComputerNameA(name, &size);
+        ReplaceDefine("[cmd=COMPUTERNAME_]", name);
+
+        ReplaceDefine("[cmd=VERSION_]", _VERSION);
+        ReplaceDefine("[cmd=LASTMSG_]", ultimamsgterminal);
+
+        ReplaceDefine("[cmd=VAR1_]", _VAR_1);
+        ReplaceDefine("[cmd=VAR2_]", _VAR_2);
+        ReplaceDefine("[cmd=VAR3_]", _VAR_3);
+        ReplaceDefine("[cmd=VAR4_]", _VAR_4);
+        ReplaceDefine("[cmd=VAR5_]", _VAR_5);
+        ReplaceDefine("[cmd=VAR6_]", _VAR_6);
+        ReplaceDefine("[cmd=VAR7_]", _VAR_7);
+
+        if (_DEFINE.find("[cmd=NEXTMSG_]") != std::string::npos)
         {
-            _DEFINE = WideToUTF8(GetDesktopPath());
-        }
-        else if (_DEFINE == "cmd=THISPATH_")
-        {
-            _DEFINE = GetCurrentPath();
-        }
-        else if (_DEFINE == "cmd=STARTDIR_")
-        {
-            _DEFINE = LerConfig("start_dir.cfg");
-        }
-        else if (_DEFINE == "cmd=LASTCOMMAND_")
-        {
-            _DEFINE = LerConfig("_LAST_COMMAND.cfg");
-        }
-        else if (_DEFINE == "cmd=ISADMIN_")
-        {
-            _DEFINE = EhAdmin() ? "true" : "false";
-        }
-        else if (_DEFINE == "cmd=USERNAME_")
-        {
-            _DEFINE = _APELIDO_WINDOWS;
-        }
-        else if (_DEFINE == "cmd=COMPUTERNAME_")
-        {
-            char name[MAX_COMPUTERNAME_LENGTH + 1];
-            DWORD size = sizeof(name);
-            GetComputerNameA(name, &size);
-            _DEFINE = name;
-        }
-        else if (_DEFINE == "cmd=VERSION_")
-        {
-            _DEFINE = _VERSION;
-        }
-        else if (_DEFINE == "cmd=TEST_")
-        {
-            _DEFINE = "test";
+            metenodefine = true;
         }
     }
+}
+
+bool KillByPID(DWORD pid)
+{
+    HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+    if (!hProcess)
+        return false;
+
+    bool ok = TerminateProcess(hProcess, 1);
+    CloseHandle(hProcess);
+    return ok;
 }
 
 void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
@@ -1461,10 +1566,6 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     {
         PRINT_BLUE("Versão: " + _VERSION, true);
     }
-    else if (comando == "test") // so de teste msm
-    {
-        PRINT_BLUE("TEST", true);
-    }
     else if (comando == "exit") // sai do terminal
     {
         exited = true;
@@ -1473,7 +1574,10 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     {
         Discord_Shutdown();
         exit(0);
-        exited = true;
+    }
+    else if (comando == "exitbf") // sai do terminal BRUTALMENTE FORÇADO (NÃO RECOMENDADO)
+    {
+        exit(0);
     }
     else if (comando == "exec")
     {
@@ -1620,9 +1724,13 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     {
         if (!_DEFINE.empty())
         {
-            ChangeDirectory(_DEFINE);
+            if (ChangeDirectory(_DEFINE))
+            {
+                _DEFINE.clear();
+            }
         }
     }
+
     else if (comando == "$local")
     {
         PRINT_SYS(GetCurrentPath(), true);
@@ -1765,16 +1873,20 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
             return;
         }
 
-        std::string cmd = "taskkill /F ";
-
         bool isPID = std::all_of(_DEFINE.begin(), _DEFINE.end(), ::isdigit);
 
         if (isPID)
-            cmd += "/PID " + _DEFINE;
+        {
+            DWORD pid = std::stoul(_DEFINE);
+            if (!KillByPID(pid))
+            {
+                PRINT_ERROR("Falha ao matar processo (PID)", true);
+            }
+        }
         else
-            cmd += "/IM " + _DEFINE;
-
-        system(cmd.c_str());
+        {
+            PRINT_ERROR("Por nome precisa enumerar processos", true);
+        }
     }
     else if (comando == "tasklist" || comando == "tasks" || comando == "$tasks")
     {
@@ -1973,6 +2085,140 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     {
         SetConsoleTitleA(_DEFINE.c_str());
     }
+    else if (comando == "content")
+    {
+        std::string def = trim(_DEFINE);
+
+        std::string sep;
+        size_t pos = std::string::npos;
+
+        if ((pos = def.find("->n>")) != std::string::npos)
+        {
+            sep = "->n>"; // adiciona COM \n
+        }
+        else if ((pos = def.find("->>")) != std::string::npos)
+        {
+            sep = "->>"; // adiciona SEM \n
+        }
+        else if ((pos = def.find("->")) != std::string::npos)
+        {
+            sep = "->"; // substitui
+        }
+        else if ((pos = def.find("-R")) != std::string::npos)
+        {
+            sep = "-R"; // limpa
+        }
+        else
+        {
+            PRINT_ERROR("Erro na sinalização", true);
+            return;
+        }
+
+        std::string nomeArquivo = trim(def.substr(0, pos));
+        std::string conteudo;
+
+        if (sep != "-R")
+        {
+            conteudo = trim(def.substr(pos + sep.size()));
+        }
+        if (!nomeArquivo.empty() && nomeArquivo.front() == '"' && nomeArquivo.back() == '"')
+        {
+            nomeArquivo = nomeArquivo.substr(1, nomeArquivo.size() - 2);
+        }
+
+        std::wstring pathW = UTF8ToWide(nomeArquivo);
+
+        const wchar_t *mode = L"wb";
+
+        if (sep == "->>" || sep == "->n>")
+        {
+            mode = L"ab";
+        }
+        else if (sep == "-R")
+        {
+            mode = L"wb";
+        }
+
+        FILE *f = _wfopen(pathW.c_str(), mode);
+        if (!f)
+        {
+            PRINT_ERROR("Erro ao abrir arquivo", true); // burro
+            return;
+        }
+
+        if (sep != "-R")
+        {
+            std::string textoFinal = conteudo;
+
+            if (sep == "->n>")
+            {
+                fseek(f, 0, SEEK_END);
+                long size = ftell(f);
+
+                if (size > 0)
+                {
+                    textoFinal = "\n" + conteudo;
+                }
+            }
+
+            fwrite(textoFinal.c_str(), 1, textoFinal.size(), f);
+        }
+
+        fclose(f);
+    }
+    else if (comando == "save_var")
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada definido", true);
+            return;
+        }
+
+        size_t pos = _DEFINE.find('-');
+        if (pos == std::string::npos)
+        {
+            PRINT_ERROR("Formato invalido. Use: X - VALOR", true);
+            return;
+        }
+
+        int index = std::stoi(_DEFINE.substr(0, pos));
+
+        std::string valor = _DEFINE.substr(pos + 1);
+
+        while (!valor.empty() && valor[0] == ' ')
+        {
+            valor.erase(0, 1);
+        }
+
+        switch (index)
+        {
+        case 1:
+            _VAR_1 = valor;
+            break;
+        case 2:
+            _VAR_2 = valor;
+            break;
+        case 3:
+            _VAR_3 = valor;
+            break;
+        case 4:
+            _VAR_4 = valor;
+            break;
+        case 5:
+            _VAR_5 = valor;
+            break;
+        case 6:
+            _VAR_6 = valor;
+            break;
+        case 7:
+            _VAR_7 = valor;
+            break;
+        default:
+            PRINT_ERROR("VAR invalida. Use 1 a 7.", true);
+            return;
+        }
+    }
+
     else // ou da erro ou executa qualquer ngc no path
     {
         std::string cmd = comandoOriginal;
@@ -2185,8 +2431,6 @@ int main(int argc, char *argv[])
 
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
     discord_rpc_CHECK();
     std::string startDir = startdir_CHECK();
 
@@ -2221,7 +2465,7 @@ int main(int argc, char *argv[])
         discord_disponivel = true;
     }
     ASCII_CALL();
-    PRINT_SYS("Olá " + CAPITALIZE(_APELIDO) + "!", true);
+    PRINT_SYS("Olá " + _APELIDO + "!", true); // ia ter um "CAPITALIZE(), mas n gostei mt, vai ficar sem"
     prompt_color_CHECK();
     PLAY_SOUND("intro");
     while (true)
