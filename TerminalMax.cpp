@@ -543,7 +543,8 @@ void HELP_CMD()
     std::cout << "Para salvar várias variaveis, use: 'save_var', pois tem até 7 slots de variaveis\n";
     std::cout << "Já o 'define' tem apenas 1\n";
     std::cout << "Para usar o save_var, basta usar: 'define X - CONTEUDO' (troque X pelo numero de slot [slots: 7])\n";
-    std::cout << "Para usar o slot, basta usar: 'define [cmd=VARX_]' (troque X pelo slot que você quer, exemplo: 'define [cmd=VAR1_]')\n\n";
+    std::cout << "Para usar o slot, basta usar: 'define [cmd=VARX_]' (troque X pelo slot que você quer, exemplo: 'define [cmd=VAR1_]')\n";
+    std::cout << "Se quiser limpar uma variavel, use: 'define X - {CLEAR}' (troque X pelo slot)\n\n";
 }
 
 void ASCII_CALL()
@@ -2188,6 +2189,11 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         while (!valor.empty() && valor[0] == ' ')
         {
             valor.erase(0, 1);
+        }
+
+        if (valor == "{CLEAR}")
+        {
+            valor = "";
         }
 
         switch (index)
