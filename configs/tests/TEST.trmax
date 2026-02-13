@@ -1,2 +1,0 @@
-define Hello, World! #; define uma variavel
-sayln #; mostrar no terminal a variavel salva

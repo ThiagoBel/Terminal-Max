@@ -53,7 +53,9 @@ Criado no C++11
 #include "configs/headers/stb_image.h"
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
-std::string _VERSION = "1.1.5";      // versao do terminal
+std::string _PAST_DEFINE = "";       // salvamento
+std::string _VERSION = "1.1.6";      // versao do terminal
+int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
 
@@ -65,6 +67,9 @@ std::string _VAR_5 = ""; // Variavel 5
 std::string _VAR_6 = ""; // Variavel 6
 std::string _VAR_7 = ""; // Variavel 7
 
+std::string USER_INPUT = "";        // valor do INPUT
+bool silent = false;                // ve se executa em silencio
+bool autocmd = true;                // ve se pode executar automaticamente ao abrir cmd
 bool exited = false;                // ve se o usuario quer sair
 bool pularlinhaw = false;           // só pro prompt não ficar fei
 bool metenodefine = false;          // ve se bota a resposta do cmd no define
@@ -95,51 +100,62 @@ void COPIAR_PRO_DEFINE(const std::string &MSG)
 
 void PRINT_ERROR(const std::string &msg, const bool withendl)
 {
-    if (withendl == true)
+    if (silent == false)
     {
-        std::cout << icolor::fatal() << msg << icolor::finished() << std::endl;
-    }
-    else if (withendl == false)
-    {
-        std::cout << icolor::fatal() << msg << icolor::finished();
-    }
-    else
-    {
-        std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+
+        if (withendl == true)
+        {
+            std::cout << icolor::fatal() << msg << icolor::finished() << std::endl;
+        }
+        else if (withendl == false)
+        {
+            std::cout << icolor::fatal() << msg << icolor::finished();
+        }
+        else
+        {
+            std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+        }
     }
     COPIAR_PRO_DEFINE(msg);
 }
 
 void PRINT_SYS(const std::string &msg, const bool withendl)
 {
-    if (withendl == true)
+    if (silent == false)
     {
-        std::cout << msg << std::endl;
-    }
-    else if (withendl == false)
-    {
-        std::cout << msg;
-    }
-    else
-    {
-        std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+
+        if (withendl == true)
+        {
+            std::cout << msg << std::endl;
+        }
+        else if (withendl == false)
+        {
+            std::cout << msg;
+        }
+        else
+        {
+            std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+        }
     }
     COPIAR_PRO_DEFINE(msg);
 }
 
 void PRINT_BLUE(const std::string &msg, const bool withendl)
 {
-    if (withendl == true)
+    if (silent == false)
     {
-        std::cout << icolor::blue() << msg << icolor::finished() << std::endl;
-    }
-    else if (withendl == false)
-    {
-        std::cout << icolor::blue() << msg << icolor::finished();
-    }
-    else
-    {
-        std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+        if (withendl == true)
+        {
+            std::cout << icolor::blue() << msg << icolor::finished() << std::endl;
+        }
+        else if (withendl == false)
+        {
+            std::cout << icolor::blue() << msg << icolor::finished();
+        }
+        else
+        {
+            std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
+        }
     }
     COPIAR_PRO_DEFINE(msg);
 }
@@ -478,7 +494,12 @@ void HELP_CMD()
     std::cout << "capitalize                 - primeiro caractere de uma palavra fica maiusculo e o resto minusculo, deixando mais formal\n";
     std::cout << "len                        - mostra a quantidade de caracteres em uma frase/palavra\n";
     std::cout << "title                      - muda o título\n";
-    std::cout << "save_var                   - salva uma variavel (explico melhor no 'Mais informações')\n\n";
+    std::cout << "save_var                   - salva uma variavel (explico melhor no 'Mais informações')\n";
+    std::cout << "input                      - manda um input para usuario responder (Vai salvar no [cmd=INPUT_])\n";
+    std::cout << "input_key                  - manda um input para usuario responder (Vai salvar no [cmd=INPUT_]), porem tem um chave antes que pega do define, exemplo: se define for: '->', vai aparecer: '-> <INPUT>'\n";
+    std::cout << "silent                     - faz que as mensagens (Algumas) do sistema não apareçam (defina no define como true ou false)\n";
+    std::cout << "reset                      - limpa o terminal, pórem, ainda fica o ASCII\n\n";
+    std::cout << "cmd_looped                 - mostra quantas vezes o terminal foi rodado\n\n";
 
     std::cout << "--          Operadores do terminal          --\n";
     std::cout << "&&&&                       - executa múltiplos comandos\n";
@@ -500,6 +521,7 @@ void HELP_CMD()
     std::cout << "define [cmd=VERSION_]      - salva no define a versão do Terminal MAX\n";
     std::cout << "define [cmd=NEXTMSG_]      - salva no define a próxima mensagem do terminal\n";
     std::cout << "define [cmd=LASTMSG_]      - salva no define a ultima mensagem do terminal\n";
+    std::cout << "define [cmd=LASTDEFINE_]   - salva no define a ultima mensagem salva do define\n";
     std::cout << "define [cmd=VAR1_]         - salva no define a variavel numero 1 definida\n";
     std::cout << "define [cmd=VAR2_]         - salva no define a variavel numero 2 definida\n";
     std::cout << "define [cmd=VAR3_]         - salva no define a variavel numero 3 definida\n";
@@ -1495,6 +1517,8 @@ void DEFINE_COMMANDS()
 
         ReplaceDefine("[cmd=VERSION_]", _VERSION);
         ReplaceDefine("[cmd=LASTMSG_]", ultimamsgterminal);
+        ReplaceDefine("[cmd=LASTDEFINE_]", _PAST_DEFINE);
+        ReplaceDefine("[cmd=INPUT_]", USER_INPUT);
 
         ReplaceDefine("[cmd=VAR1_]", _VAR_1);
         ReplaceDefine("[cmd=VAR2_]", _VAR_2);
@@ -1520,6 +1544,14 @@ bool KillByPID(DWORD pid)
     bool ok = TerminateProcess(hProcess, 1);
     CloseHandle(hProcess);
     return ok;
+}
+std::string RemoveQuotes(const std::string &str)
+{
+    if (str.size() >= 2 && str.front() == '"' && str.back() == '"')
+    {
+        return str.substr(1, str.size() - 2);
+    }
+    return str;
 }
 
 void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
@@ -1710,13 +1742,31 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     else if (comando == "sayln")
     {
         pularlinhaw = false;
-        std::cout << _DEFINE << std::endl;
+
+        std::string texto = _DEFINE;
+        if (!texto.empty() && texto.front() == '"' && texto.back() == '"')
+        {
+            texto = texto.substr(1, texto.size() - 2);
+        }
+
+        std::cout << texto << std::endl;
     }
     else if (comando == "say")
     {
         pularlinhaw = true;
-        std::cout << _DEFINE;
+
+        std::string texto = RemoveQuotes(_DEFINE);
+        if (pularlinhaw == true)
+        {
+            pularlinhaw = false;
+            std::cout << texto << "\n";
+        }
+        else
+        {
+            std::cout << texto;
+        }
     }
+
     else if (comando == "cls" || comando == "clear")
     {
         CLEAR_TERMINAL();
@@ -2225,6 +2275,44 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         }
     }
 
+    else if (comando == "input")
+    {
+        std::string AAAAAAAA = "";
+        getline(std::cin, AAAAAAAA);
+        USER_INPUT = AAAAAAAA;
+    }
+    else if (comando == "input_key")
+    {
+        std::string AAAAAAAA = "";
+        std::cout << _DEFINE << " ";
+        getline(std::cin, AAAAAAAA);
+        USER_INPUT = AAAAAAAA;
+    }
+    else if (comando == "silent") // executa prints em silencio
+    {
+        if (_DEFINE == "true" || _DEFINE == "on")
+        {
+            silent = true;
+        }
+        else if (_DEFINE == "false" || _DEFINE == "off")
+        {
+            silent = false;
+        }
+        else
+        {
+            PRINT_ERROR("Erro no sinalizador", true);
+        }
+    }
+    else if (comando == "reset")
+    {
+        CLEAR_TERMINAL();
+        ASCII_CALL();
+        PRINT_SYS("Olá " + _APELIDO + "!", true);
+    }
+    else if (comando == "cmd_looped")
+    {
+        PRINT_SYS(std::to_string(_TERMINAL_RODADOS), true);
+    }
     else // ou da erro ou executa qualquer ngc no path
     {
         std::string cmd = comandoOriginal;
@@ -2255,59 +2343,53 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 
 void EXEC_MULTIPLE(const std::string &linha)
 {
-    size_t pos = 0;
-    size_t nextAnd, nextDelay;
-
     std::string restante = RemoverComentario(linha);
+    std::string buffer = "";
+    bool inQuotes = false;
 
-    while (true)
+    for (size_t i = 0; i < restante.size(); ++i)
     {
-        nextAnd = restante.find(AND_OPERATOR);
-        nextDelay = restante.find(DELAY_OPERATOR);
+        char c = restante[i];
 
-        size_t next;
-        bool isDelay = false;
-
-        if (nextAnd == std::string::npos && nextDelay == std::string::npos)
+        // Toggle de aspas
+        if (c == '"')
         {
-            std::string cmd = trim(restante);
+            inQuotes = !inQuotes;
+            buffer += c; // mantém aspas no buffer
+            continue;
+        }
+
+        // Checa se estamos fora de aspas e encontramos AND_OPERATOR
+        if (!inQuotes && restante.substr(i, AND_OPERATOR.size()) == AND_OPERATOR)
+        {
+            std::string cmd = trim(buffer);
             if (!cmd.empty())
             {
                 COMANDOS_EXEC(cmd);
             }
-            break;
+            buffer.clear();
+            i += AND_OPERATOR.size() - 1; // pula o operador
         }
+        // Checa se estamos fora de aspas e encontramos DELAY_OPERATOR
+        else if (!inQuotes && restante.substr(i, DELAY_OPERATOR.size()) == DELAY_OPERATOR)
+        {
+            std::string cmd = trim(buffer);
+            if (!cmd.empty())
+            {
+                COMANDOS_EXEC(cmd);
+            }
+            buffer.clear();
+            i += DELAY_OPERATOR.size() - 1;
 
-        if (nextDelay != std::string::npos &&
-            (nextAnd == std::string::npos || nextDelay < nextAnd))
-        {
-            next = nextDelay;
-            isDelay = true;
-        }
-        else
-        {
-            next = nextAnd;
-        }
-
-        std::string cmd = trim(restante.substr(0, next));
-        if (!cmd.empty())
-        {
-            COMANDOS_EXEC(cmd);
-        }
-
-        if (isDelay)
-        {
-            std::string resto = restante.substr(next + DELAY_OPERATOR.length());
-            size_t spacePos = resto.find(' ');
+            // pega valor do delay
+            size_t j = i + 1;
             std::string delayStr;
-            if (spacePos != std::string::npos)
+            while (j < restante.size() && restante[j] != ' ')
             {
-                delayStr = resto.substr(0, spacePos);
+                delayStr += restante[j];
+                ++j;
             }
-            else
-            {
-                delayStr = resto;
-            }
+            i = j - 1;
 
             int delay_ms = 1000; // padrão
             if (!delayStr.empty())
@@ -2321,29 +2403,19 @@ void EXEC_MULTIPLE(const std::string &linha)
                     PRINT_ERROR("Valor de delay inválido, use @@@@VALOR", true);
                 }
             }
-
             Sleep(delay_ms);
-        }
-
-        if (isDelay)
-        {
-            std::string resto = restante.substr(next + DELAY_OPERATOR.length());
-            size_t spacePos = resto.find(' ');
-            if (spacePos != std::string::npos)
-            {
-                restante.erase(0, next + DELAY_OPERATOR.length() + spacePos);
-            }
-            else
-            {
-                restante.erase(0, restante.length());
-            }
         }
         else
         {
-            restante.erase(0, next + AND_OPERATOR.length());
+            buffer += c;
         }
+    }
 
-        restante = trim(restante);
+    // executa o último comando que sobrou
+    std::string cmd = trim(buffer);
+    if (!cmd.empty())
+    {
+        COMANDOS_EXEC(cmd);
     }
 }
 
@@ -2476,6 +2548,7 @@ int main(int argc, char *argv[])
     PLAY_SOUND("intro");
     while (true)
     {
+        _PAST_DEFINE = _DEFINE;
         SetConsoleTitleA("Terminal MAX");
         if (exited == true)
         {
@@ -2500,6 +2573,7 @@ int main(int argc, char *argv[])
         getline(std::cin, cmd); // input
 
         EXEC_MULTIPLE(cmd); // executa todos os comandos usados
+        _TERMINAL_RODADOS = _TERMINAL_RODADOS + 1;
     }
     Discord_Shutdown();
     return 0; // so retorna que o programa deu tudo certo
