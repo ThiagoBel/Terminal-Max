@@ -59,7 +59,7 @@ Criado no C++11
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
 std::string _PAST_DEFINE = "";       // salvamento
-std::string _VERSION = "1.1.7";      // versao do terminal
+std::string _VERSION = "1.1.8";      // versao do terminal
 int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
@@ -71,7 +71,9 @@ std::string _VAR_5 = "";             // Variavel 5
 std::string _VAR_6 = "";             // Variavel 6
 std::string _VAR_7 = "";             // Variavel 7
 
-std::string USER_INPUT = "";        // valor do INPUT
+std::string USER_INPUT = "";  // valor do INPUT
+std::string USER_CALCCD = ""; // valor do CALCCD
+bool CONFIGS_EXIT = false;
 int EASTER_EGG_PAIA = 0;            // quantos reset o usuario usou
 int EASTER_EGG_PAIA_QUANT = 7;      // se for maior ou igual que isso ele mostra um segredin
 bool silent = false;                // ve se executa em silencio
@@ -86,6 +88,11 @@ bool _DISCORD_RPC_VALUE = true;     // ve o bagui do rpc do discord
 bool _PROMPT_COLOR_VALUE = true;    // cores no prompt
 bool _SOUNDS_VALUE = true;          // sons
 bool _DEFINE_CMD = true;            // comandos direto do DEFINE
+bool _AUTORUN_CMD = true;           // autorun do sistema
+bool _AUTORUNLOOP_CMD = true;       // autorun do sistema que roda toda hora
+bool _AUTORUNFIRST_CMD = true;      // primeiro codigo que roda no sistema
+bool _CUSTOM_CMD = true;            // comando personalizado
+bool _SYSTEM_CMD = true;            // comandos do sistema operacional
 std::string _APELIDO = "";          // apelido do usuario
 std::string _APELIDO_WINDOWS = "";  // apelido do WINDOWS do usuario
 DiscordEventHandlers handlers;
@@ -254,6 +261,32 @@ std::string OS_DETECTAR()
         return "Unix-like";
     }
     return "?";
+}
+std::string WideToUTF8(const std::wstring &w)
+{
+    int size = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        w.c_str(),
+        -1,
+        nullptr,
+        0,
+        nullptr,
+        nullptr);
+
+    std::string result(size - 1, 0);
+
+    WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        w.c_str(),
+        -1,
+        &result[0],
+        size,
+        nullptr,
+        nullptr);
+
+    return result;
 }
 
 std::wstring UTF8ToWide(const std::string &s) // transforma UTF8 pra UTF16
@@ -486,6 +519,37 @@ std::string GetExePath() // pega o lugar do .exe
     return full.substr(0, pos);
 }
 
+std::string GetExeFolder()
+{
+    char path[MAX_PATH];
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+
+    std::string exePath(path);
+
+    size_t pos = exePath.find_last_of("\\/");
+    if (pos != std::string::npos)
+    {
+        exePath = exePath.substr(0, pos);
+    }
+
+    return exePath;
+}
+std::string GetExeFolder16()
+{
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(NULL, path, MAX_PATH);
+
+    std::wstring wpath(path);
+
+    size_t pos = wpath.find_last_of(L"\\/");
+    if (pos != std::wstring::npos)
+    {
+        wpath = wpath.substr(0, pos);
+    }
+
+    return WideToUTF8(wpath);
+}
+
 std::string GetUserPath()
 {
     HKEY hKey;
@@ -554,6 +618,7 @@ void HELP_CMD()
     std::cout << "help                       - mostra ajuda\n";
     std::cout << "cls / clear                - limpa a tela\n";
     std::cout << "calcc                      - calcula algo\n";
+    std::cout << "calccd                     - calcula algo mas salva no define\n";
     std::cout << "run                        - executa script (.trmax)\n";
     std::cout << "exit                       - sai do terminal\n";
     std::cout << "exitf                      - saída forçada\n";
@@ -562,6 +627,7 @@ void HELP_CMD()
     std::cout << "exec                       - executa programa definido\n";
     std::cout << "open                       - executa programa ou site definido\n";
     std::cout << ">                          - executa comando direto do sistema\n";
+    std::cout << ">>                         - executa comando direto do terminal\n";
     std::cout << "mkfile / newfile           - cria arquivo\n";
     std::cout << "rmfile / delfile           - deleta arquivo\n";
     std::cout << "mkdir / newfolder          - cria pasta\n";
@@ -621,6 +687,7 @@ void HELP_CMD()
     std::cout << "define [cmd=LASTMSG_]      - salva no define a ultima mensagem do terminal\n";
     std::cout << "define [cmd=LASTDEFINE_]   - salva no define a ultima mensagem salva do define\n";
     std::cout << "define [cmd=WINVERS_]      - salva no define a versão do Windows\n";
+    std::cout << "define [cmd=CALCCD_]         - salva no define a resposta do calccd\n";
     std::cout << "define [cmd=VAR1_]         - salva no define a variavel numero 1 definida\n";
     std::cout << "define [cmd=VAR2_]         - salva no define a variavel numero 2 definida\n";
     std::cout << "define [cmd=VAR3_]         - salva no define a variavel numero 3 definida\n";
@@ -771,7 +838,6 @@ void CriarArquivo(const std::string &nome)
 
     if (file)
     {
-        PRINT_BLUE("Arquivo criado", true);
     }
     else
     {
@@ -783,7 +849,6 @@ void DeletarArquivo(const std::string &nome)
 {
     if (DeleteFileA(nome.c_str()))
     {
-        PRINT_BLUE("Arquivo deletado", true);
     }
     else
     {
@@ -795,7 +860,6 @@ void DeletarPasta(const std::string &nome)
 {
     if (_rmdir(nome.c_str()) == 0)
     {
-        PRINT_BLUE("Pasta deletada", true);
     }
     else
     {
@@ -807,39 +871,11 @@ void CriarPasta(const std::string &nome)
 {
     if (_mkdir(nome.c_str()) == 0)
     {
-        PRINT_BLUE("Pasta criada", true);
     }
     else
     {
         PRINT_ERROR("Erro ao criar pasta", true);
     }
-}
-
-std::string WideToUTF8(const std::wstring &w)
-{
-    int size = WideCharToMultiByte(
-        CP_UTF8,
-        0,
-        w.c_str(),
-        -1,
-        nullptr,
-        0,
-        nullptr,
-        nullptr);
-
-    std::string result(size - 1, 0);
-
-    WideCharToMultiByte(
-        CP_UTF8,
-        0,
-        w.c_str(),
-        -1,
-        &result[0],
-        size,
-        nullptr,
-        nullptr);
-
-    return result;
 }
 
 bool DirectoryExists(const std::string &path)
@@ -1001,6 +1037,18 @@ std::string trim(std::string s)
                          })
                 .base(),
             s.end());
+
+    return s;
+}
+
+static std::string normalizeQuotes(std::string s)
+{
+    s = trim(s);
+
+    while (s.size() >= 2 && s.front() == '"' && s.back() == '"')
+    {
+        s = s.substr(1, s.size() - 2);
+    }
 
     return s;
 }
@@ -1410,6 +1458,206 @@ void define_cmd_CHECK()
     }
 }
 
+void autorun_cmd_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _AUTORUN_CMD = true;
+        SalvarConfig("_AUTORUN_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _AUTORUN_CMD = false;
+        SalvarConfig("_AUTORUN_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void autorun_cmd_CHECK()
+{
+    std::string val = LerConfig("_AUTORUN_CMD.cfg");
+
+    if (val == "true")
+    {
+        _AUTORUN_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _AUTORUN_CMD = false;
+    }
+    else
+    {
+        _AUTORUN_CMD = true;
+    }
+}
+
+void autorunloop_cmd_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _AUTORUNLOOP_CMD = true;
+        SalvarConfig("_AUTORUNLOOP_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _AUTORUNLOOP_CMD = false;
+        SalvarConfig("_AUTORUNLOOP_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void autorunloop_cmd_CHECK()
+{
+    std::string val = LerConfig("_AUTORUNLOOP_CMD.cfg");
+
+    if (val == "true")
+    {
+        _AUTORUNLOOP_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _AUTORUNLOOP_CMD = false;
+    }
+    else
+    {
+        _AUTORUNLOOP_CMD = true;
+    }
+}
+
+void autorunfirst_cmd_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _AUTORUNFIRST_CMD = true;
+        SalvarConfig("_AUTORUNFIRST_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _AUTORUNFIRST_CMD = false;
+        SalvarConfig("_AUTORUNFIRST_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void autorunfirst_cmd_CHECK()
+{
+    std::string val = LerConfig("_AUTORUNFIRST_CMD.cfg");
+
+    if (val == "true")
+    {
+        _AUTORUNFIRST_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _AUTORUNFIRST_CMD = false;
+    }
+    else
+    {
+        _AUTORUNFIRST_CMD = true;
+    }
+}
+
+void custom_cmd_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _CUSTOM_CMD = true;
+        SalvarConfig("_CUSTOM_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _CUSTOM_CMD = false;
+        SalvarConfig("_CUSTOM_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void custom_cmd_CHECK()
+{
+    std::string val = LerConfig("_CUSTOM_CMD.cfg");
+
+    if (val == "true")
+    {
+        _CUSTOM_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _CUSTOM_CMD = false;
+    }
+    else
+    {
+        _CUSTOM_CMD = true;
+    }
+}
+
+void OS_cmd_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _SYSTEM_CMD = true;
+        SalvarConfig("_SYSTEM_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _SYSTEM_CMD = false;
+        SalvarConfig("_SYSTEM_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void OS_cmd_CHECK()
+{
+    std::string val = LerConfig("_SYSTEM_CMD.cfg");
+
+    if (val == "true")
+    {
+        _SYSTEM_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _SYSTEM_CMD = false;
+    }
+    else
+    {
+        _SYSTEM_CMD = true;
+    }
+}
+
 void CONFIGS_ABA(const std::string &opt)
 {
     if (opt == "image_char")
@@ -1466,7 +1714,7 @@ void CONFIGS_ABA(const std::string &opt)
             {"Voltar", "voltar", prompt_color_SET},
         };
 
-        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+        MOPTS::ShowMenu("Cor no prompt", path_opts, "> ", "");
     }
     else if (opt == "sounds")
     {
@@ -1476,7 +1724,7 @@ void CONFIGS_ABA(const std::string &opt)
             {"Voltar", "voltar", sounds_SET},
         };
 
-        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+        MOPTS::ShowMenu("Sons", path_opts, "> ", "");
     }
     else if (opt == "define_cmd")
     {
@@ -1486,9 +1734,58 @@ void CONFIGS_ABA(const std::string &opt)
             {"Voltar", "voltar", define_cmd_SET},
         };
 
-        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+        MOPTS::ShowMenu("Comandos via define", path_opts, "> ", "");
     }
+    else if (opt == "Autorun_cmd")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar autorun", "true", autorun_cmd_SET},
+            {"Desativar autorun", "false", autorun_cmd_SET},
+            {"Voltar", "voltar", autorun_cmd_SET},
+        };
 
+        MOPTS::ShowMenu("Autorun", path_opts, "> ", "");
+    }
+    else if (opt == "Autorunloop_cmd")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar autorunLoop", "true", autorunloop_cmd_SET},
+            {"Desativar autorunLoop", "false", autorunloop_cmd_SET},
+            {"Voltar", "voltar", autorunloop_cmd_SET},
+        };
+
+        MOPTS::ShowMenu("autorunLoop", path_opts, "> ", "");
+    }
+    else if (opt == "Autorunfirst_cmd")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar AutorunFirst", "true", autorunfirst_cmd_SET},
+            {"Desativar AutorunFirst", "false", autorunfirst_cmd_SET},
+            {"Voltar", "voltar", autorunfirst_cmd_SET},
+        };
+
+        MOPTS::ShowMenu("AutorunFirst", path_opts, "> ", "");
+    }
+    else if (opt == "Custom_cmd")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar Comandos personalizados", "true", custom_cmd_SET},
+            {"Desativar Comandos personalizados", "false", custom_cmd_SET},
+            {"Voltar", "voltar", custom_cmd_SET},
+        };
+
+        MOPTS::ShowMenu("Comandos personalizados", path_opts, "> ", "");
+    }
+    else if (opt == "OS_cmd")
+    {
+        MOPTS::MenuOption path_opts[] = {
+            {"Ativar Comandos do sistema operacional", "true", OS_cmd_SET},
+            {"Desativar Comandos do sistema operacional", "false", OS_cmd_SET},
+            {"Voltar", "voltar", OS_cmd_SET},
+        };
+
+        MOPTS::ShowMenu("Comandos do sistema operacional", path_opts, "> ", "");
+    }
     else if (opt == "voltar")
     {
         // nada
@@ -1623,6 +1920,7 @@ void DEFINE_COMMANDS()
         ReplaceDefine("[cmd=LASTCOMMAND_]", LerConfig("_LAST_COMMAND.cfg"));
         ReplaceDefine("[cmd=ISADMIN_]", EhAdmin() ? "true" : "false");
         ReplaceDefine("[cmd=USERNAME_]", _APELIDO_WINDOWS);
+        ReplaceDefine("[cmd=CONFIGS_]", GetExeFolder16() + "\\configs");
 
         char name[MAX_COMPUTERNAME_LENGTH + 1];
         DWORD size = sizeof(name);
@@ -1633,6 +1931,7 @@ void DEFINE_COMMANDS()
         ReplaceDefine("[cmd=LASTMSG_]", ultimamsgterminal);
         ReplaceDefine("[cmd=LASTDEFINE_]", _PAST_DEFINE);
         ReplaceDefine("[cmd=INPUT_]", USER_INPUT);
+        ReplaceDefine("[cmd=CALCCD_]", USER_CALCCD);
         ReplaceDefine("[cmd=WINVERS_]", VERSAO_WINDOWS());
 
         ReplaceDefine("[cmd=VAR1_]", _VAR_1);
@@ -1690,6 +1989,18 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     }
 
     std::string comando = toLower(cmdWord);
+    if (_CUSTOM_CMD == true)
+    {
+        std::string customPath = GetExeFolder() + "\\configs\\custom_cmd\\" + cmdWord + ".trmax";
+
+        DWORD attr = GetFileAttributesA(customPath.c_str());
+        if (attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            RUN_SCRIPT_FILE(customPath);
+            SalvarConfig("_LAST_COMMAND.cfg", comandoOriginal);
+            return;
+        }
+    }
     if (comando == "define") // salva uma variavel
     {
         _DEFINE = cmdArg;
@@ -1762,21 +2073,35 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         }
     }
 
-    else if (comando == "configs") // coisa lina, bonita, cheirosa e maravilhosa
+    else if (comando == "configs")
     {
-        MOPTS::MenuOption configs_opts[] = {
-            {"Images chars", "image_char", CONFIGS_ABA},
-            {"Apelido", "apelido", CONFIGS_ABA},
-            {"Diretório inicial", "start_dir", CONFIGS_ABA},
-            {"Discord RPC", "discord_rpc", CONFIGS_ABA},
-            {"Cor do prompt", "prompt_color", CONFIGS_ABA},
-            {"PATH do sistema", "system_path", CONFIGS_ABA},
-            {"Sons", "sounds", CONFIGS_ABA},
-            {"Comandos do define", "define_cmd", CONFIGS_ABA},
-            {"Voltar", "voltar", CONFIGS_ABA},
-        };
+        CONFIGS_EXIT = false;
 
-        MOPTS::ShowMenu("Configurações", configs_opts, "> ", "");
+        while (!CONFIGS_EXIT)
+        {
+            MOPTS::MenuOption configs_opts[] = {
+                {"Images chars", "image_char", CONFIGS_ABA},
+                {"Apelido", "apelido", CONFIGS_ABA},
+                {"Diretório inicial", "start_dir", CONFIGS_ABA},
+                {"Discord RPC", "discord_rpc", CONFIGS_ABA},
+                {"Cor do prompt", "prompt_color", CONFIGS_ABA},
+                {"PATH do sistema", "system_path", CONFIGS_ABA},
+                {"Sons", "sounds", CONFIGS_ABA},
+                {"Comandos do define", "define_cmd", CONFIGS_ABA},
+                {"Autorun", "Autorun_cmd", CONFIGS_ABA},
+                {"AutorunLoop", "Autorunloop_cmd", CONFIGS_ABA},
+                {"AutorunFirst", "Autorunfirst_cmd", CONFIGS_ABA},
+                {"Comandos personalizados", "Custom_cmd", CONFIGS_ABA},
+                {"Comandos do sistema operacional", "OS_cmd", CONFIGS_ABA},
+
+                {"Voltar", "voltar", [](const std::string &)
+                 {
+                     CONFIGS_EXIT = true;
+                 }},
+            };
+
+            MOPTS::ShowMenu("Configurações", configs_opts, "> ", "");
+        }
     }
     else if (comando == "image") // manda uma imagem, absurdo
     {
@@ -1869,19 +2194,9 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     else if (comando == "say")
     {
         pularlinhaw = true;
-
         std::string texto = RemoveQuotes(_DEFINE);
-        if (pularlinhaw == true)
-        {
-            pularlinhaw = false;
-            std::cout << texto << "\n";
-        }
-        else
-        {
-            std::cout << texto;
-        }
+        std::cout << texto;
     }
-
     else if (comando == "cls" || comando == "clear")
     {
         CLEAR_TERMINAL();
@@ -1964,7 +2279,18 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     }
     else if (comando == ">")
     {
-        system(_DEFINE.c_str());
+        if (_SYSTEM_CMD == true)
+        {
+            system(_DEFINE.c_str());
+        }
+        else
+        {
+            PRINT_ERROR("Sem permissão para executar comandos do sistema operacional!", true);
+        }
+    }
+    else if (comando == ">>")
+    {
+        COMANDOS_EXEC(_DEFINE);
     }
     else if (comando == "check_admin" || comando == "$admin")
     {
@@ -2087,6 +2413,24 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         {
             int resultado = calcularExpressao(_DEFINE);
             PRINT_BLUE(std::to_string(resultado), true);
+        }
+        catch (const std::exception &e)
+        {
+            PRINT_ERROR("Erro ao calcular a expressão", true);
+        }
+    }
+    else if (comando == "calccd") // calcula uma expressão e salva no define
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Erro, defina uma expressão", true);
+            return;
+        }
+
+        try
+        {
+            int resultado = calcularExpressao(_DEFINE);
+            USER_CALCCD = std::to_string(resultado);
         }
         catch (const std::exception &e)
         {
@@ -2260,19 +2604,19 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 
         if ((pos = def.find("->n>")) != std::string::npos)
         {
-            sep = "->n>"; // adiciona COM \n
+            sep = "->n>";
         }
         else if ((pos = def.find("->>")) != std::string::npos)
         {
-            sep = "->>"; // adiciona SEM \n
+            sep = "->>";
         }
         else if ((pos = def.find("->")) != std::string::npos)
         {
-            sep = "->"; // substitui
+            sep = "->";
         }
         else if ((pos = def.find("-R")) != std::string::npos)
         {
-            sep = "-R"; // limpa
+            sep = "-R";
         }
         else
         {
@@ -2283,13 +2627,13 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         std::string nomeArquivo = trim(def.substr(0, pos));
         std::string conteudo;
 
+        nomeArquivo = normalizeQuotes(nomeArquivo);
+
         if (sep != "-R")
         {
             conteudo = trim(def.substr(pos + sep.size()));
-        }
-        if (!nomeArquivo.empty() && nomeArquivo.front() == '"' && nomeArquivo.back() == '"')
-        {
-            nomeArquivo = nomeArquivo.substr(1, nomeArquivo.size() - 2);
+
+            conteudo = normalizeQuotes(conteudo);
         }
 
         std::wstring pathW = UTF8ToWide(nomeArquivo);
@@ -2308,7 +2652,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         FILE *f = _wfopen(pathW.c_str(), mode);
         if (!f)
         {
-            PRINT_ERROR("Erro ao abrir arquivo", true); // burro
+            PRINT_ERROR("Erro ao abrir arquivo", true);
             return;
         }
 
@@ -2425,6 +2769,17 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         {
             EASTER_EGG_PAIA = 0;
         }
+        _DEFINE = "";
+        _PAST_DEFINE = "";
+        _VAR_1 = "";
+        _VAR_2 = "";
+        _VAR_3 = "";
+        _VAR_4 = "";
+        _VAR_5 = "";
+        _VAR_6 = "";
+        _VAR_7 = "";
+        USER_INPUT = "";
+        USER_CALCCD = "";
         SetConsoleTitleA(("Terminal MAX - " + _VERSION).c_str());
         CLEAR_TERMINAL();
         ASCII_CALL();
@@ -2569,6 +2924,36 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 
         std::cout << "Proprietario registrado : " << owner << "\n";
     }
+    else if (comando == "copy") // copia algo do define
+    {
+        if (_DEFINE.empty())
+        {
+            PRINT_ERROR("Nada definido para copiar", true);
+            return;
+        }
+
+        if (!OpenClipboard(nullptr))
+        {
+            PRINT_ERROR("Erro ao acessar clipboard", true);
+            return;
+        }
+
+        EmptyClipboard();
+
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, _DEFINE.size() + 1);
+        if (!hMem)
+        {
+            CloseClipboard();
+            PRINT_ERROR("Erro ao alocar memória", true);
+            return;
+        }
+
+        memcpy(GlobalLock(hMem), _DEFINE.c_str(), _DEFINE.size() + 1);
+        GlobalUnlock(hMem);
+
+        SetClipboardData(CF_TEXT, hMem);
+        CloseClipboard();
+    }
     else // ou da erro ou executa qualquer ngc no path
     {
         std::string cmd = comandoOriginal;
@@ -2679,11 +3064,11 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
 {
     std::wstring wpath = UTF8ToWide(arquivo);
 
-    FILE *f = _wfopen(wpath.c_str(), L"r");
+    FILE *f = fopen(arquivo.c_str(), "r");
 
     if (!f)
     {
-        wpath = UTF8ToWide(arquivo + ".trmax"); // tenta com .trmax
+        wpath = UTF8ToWide(arquivo + ".trmax");
         f = _wfopen(wpath.c_str(), L"r");
     }
 
@@ -2710,8 +3095,56 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
     return true;
 }
 
+void EXEC_AUTORUN(const std::string &mode)
+{
+    std::string pasta = GetExeFolder() + "\\configs\\autorun\\*.trmax";
+
+    if (mode == "l")
+    {
+        pasta = GetExeFolder() + "\\configs\\autorunloop\\*.trmax";
+    }
+    else if (mode == "f")
+    {
+        pasta = GetExeFolder() + "\\configs\\autorunfirst\\*.trmax";
+    }
+
+    WIN32_FIND_DATAA data;
+    HANDLE hFind = FindFirstFileA(pasta.c_str(), &data);
+
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        return;
+    }
+
+    do
+    {
+        if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            std::string arquivo = GetExeFolder() + "\\configs\\autorun\\" + data.cFileName;
+
+            if (mode == "l")
+            {
+                arquivo = GetExeFolder() + "\\configs\\autorunloop\\" + data.cFileName;
+            }
+            else if (mode == "f")
+            {
+                arquivo = GetExeFolder() + "\\configs\\autorunfirst\\" + data.cFileName;
+            }
+            RUN_SCRIPT_FILE(arquivo);
+        }
+
+    } while (FindNextFileA(hFind, &data));
+
+    FindClose(hFind);
+}
+
 int main(int argc, char *argv[])
 {
+    autorunfirst_cmd_CHECK();
+    if (_AUTORUNFIRST_CMD == true)
+    {
+        EXEC_AUTORUN("f");
+    }
     while (true)
     {
         if (OS_DETECTAR() != "Windows")
@@ -2852,6 +3285,10 @@ int main(int argc, char *argv[])
     MOPTS::all_color_line = false;
     sounds_CHECK();
     define_cmd_CHECK();
+    autorun_cmd_CHECK();
+    autorunloop_cmd_CHECK();
+    custom_cmd_CHECK();
+    OS_cmd_CHECK();
     apelido_CHECK();
     image_char_CHECK();
     _DEFINE = LerConfig("H_DEFINE_.cfg"); // salva uma variavel pro terminal
@@ -2864,6 +3301,10 @@ int main(int argc, char *argv[])
     PRINT_SYS("Olá " + _APELIDO + "!", true); // ia ter um "CAPITALIZE(), mas n gostei mt, vai ficar sem"
     prompt_color_CHECK();
     PLAY_SOUND("intro");
+    if (_AUTORUN_CMD == true)
+    {
+        EXEC_AUTORUN("n");
+    }
     while (true)
     {
         _PAST_DEFINE = _DEFINE;
@@ -2871,6 +3312,10 @@ int main(int argc, char *argv[])
         {
             Discord_Shutdown();
             break;
+        }
+        if (_AUTORUNLOOP_CMD == true)
+        {
+            EXEC_AUTORUN("l");
         }
         if (pularlinhaw == true)
         {
