@@ -1,4 +1,5 @@
 exit
 define [cmd=CONFIGS_] &&&& local
-define UPDATER.bat
-exec
+define SENDFILE.bat &&&& exec
+@@@@67
+define UPDATER.bat @@@@67 exec
