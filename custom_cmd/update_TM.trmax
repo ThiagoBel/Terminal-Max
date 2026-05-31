@@ -1,0 +1,4 @@
+exit
+define [cmd=CONFIGS_] &&&& local
+define UPDATER.bat
+exec
