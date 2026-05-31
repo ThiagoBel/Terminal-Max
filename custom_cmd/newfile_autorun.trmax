@@ -1,6 +1,0 @@
-define 1 - [cmd=LASTDEFINE_] &&&& save_var
-define 2 - [cmd=THISPATH_] &&&& save_var
-define [cmd=CONFIGS_] &&&& local
-define autorun &&&& local
-define [cmd=VAR1_] &&&& newfile
-define [cmd=VAR2_] &&&& local
