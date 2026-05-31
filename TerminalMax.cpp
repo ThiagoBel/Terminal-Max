@@ -687,7 +687,9 @@ void HELP_CMD()
     std::cout << "define [cmd=LASTMSG_]      - salva no define a ultima mensagem do terminal\n";
     std::cout << "define [cmd=LASTDEFINE_]   - salva no define a ultima mensagem salva do define\n";
     std::cout << "define [cmd=WINVERS_]      - salva no define a versão do Windows\n";
-    std::cout << "define [cmd=CALCCD_]         - salva no define a resposta do calccd\n";
+    std::cout << "define [cmd=CALCCD_]       - salva no define a resposta do calccd\n";
+    std::cout << "define [cmd=CONFIGS_]      - salva no define o path das configurações do terminal\n";
+    std::cout << "define [cmd=DEFINE_]       - salva no define o próprio define\n";
     std::cout << "define [cmd=VAR1_]         - salva no define a variavel numero 1 definida\n";
     std::cout << "define [cmd=VAR2_]         - salva no define a variavel numero 2 definida\n";
     std::cout << "define [cmd=VAR3_]         - salva no define a variavel numero 3 definida\n";
@@ -1921,6 +1923,7 @@ void DEFINE_COMMANDS()
         ReplaceDefine("[cmd=ISADMIN_]", EhAdmin() ? "true" : "false");
         ReplaceDefine("[cmd=USERNAME_]", _APELIDO_WINDOWS);
         ReplaceDefine("[cmd=CONFIGS_]", GetExeFolder16() + "\\configs");
+        ReplaceDefine("[cmd=DEFINE_]", _DEFINE);
 
         char name[MAX_COMPUTERNAME_LENGTH + 1];
         DWORD size = sizeof(name);
