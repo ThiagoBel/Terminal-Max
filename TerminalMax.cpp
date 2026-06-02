@@ -59,7 +59,7 @@ Criado no C++11
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
 std::string _PAST_DEFINE = "";       // salvamento
-std::string _VERSION = "1.1.9";      // versao do terminal
+std::string _VERSION = "1.1.95";      // versao do terminal
 int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
@@ -830,7 +830,7 @@ void ASCII_CALL()
     if (EASTER_EGG_PAIA >= EASTER_EGG_PAIA_QUANT)
     {
         std::cout << icolor::red() << R"( _/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\_______/\\\________ )" << icolor::finished() << std::endl;
-        std::cout << icolor::red() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/__9.9.9_)" << icolor::finished() << std::endl;
+        std::cout << icolor::red() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/_9.9.99_)" << icolor::finished() << std::endl;
         std::cout << icolor::red() << R"( __\/\\\//\\\____/\\\//\\\__/\\\/////////\\\___\///\\\\\\/_________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ___\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_____\//\\\\__________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ____\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\______\/\\\\_________ )" << icolor::finished() << std::endl;
@@ -842,7 +842,7 @@ void ASCII_CALL()
     else
     {
         std::cout << icolor::blue() << R"( _/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\_______/\\\________ )" << icolor::finished() << std::endl;
-        std::cout << icolor::blue() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/__)" << _VERSION << "_" << icolor::finished() << std::endl;
+        std::cout << icolor::blue() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/_)" << _VERSION << "_" << icolor::finished() << std::endl;
         std::cout << icolor::blue() << R"( __\/\\\//\\\____/\\\//\\\__/\\\/////////\\\___\///\\\\\\/_________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ___\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_____\//\\\\__________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ____\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\______\/\\\\_________ )" << icolor::finished() << std::endl;
@@ -1994,12 +1994,19 @@ void OPEN(const std::string &caminhoOuURL) // abre
     }
 }
 
-void ReplaceDefine(const std::string &token, const std::string &value)
+void ReplaceDefine(const std::string& token, const std::string& value)
 {
     size_t pos = 0;
 
     while ((pos = _DEFINE.find(token, pos)) != std::string::npos)
     {
+        if (pos > 0 && _DEFINE[pos - 1] == '\\')
+        {
+            _DEFINE.erase(pos - 1, 1);
+            pos += token.length() - 1;
+            continue;
+        }
+
         _DEFINE.replace(pos, token.length(), value);
         pos += value.length();
     }
