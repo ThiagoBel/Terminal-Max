@@ -751,6 +751,7 @@ void HELP_CMD()
     std::cout << "reset                      - limpa o terminal, pórem, ainda fica o ASCII\n\n";
     std::cout << "cmd_looped                 - mostra quantas vezes o terminal foi rodado\n\n";
     std::cout << "read_file / $file          - mostra o que tem dentro de um arquivo\n\n";
+    std::cout << "all_vars / av              - mostra todas as variáveis do TerminalMax\n\n";
 
     std::cout << "--          Operadores do terminal          --\n";
     std::cout << "&&&&                       - executa múltiplos comandos\n";
