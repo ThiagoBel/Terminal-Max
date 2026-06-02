@@ -76,6 +76,7 @@ std::string USER_CALCCD = ""; // valor do CALCCD
 bool CONFIGS_EXIT = false;
 int EASTER_EGG_PAIA = 0;            // quantos reset o usuario usou
 int EASTER_EGG_PAIA_QUANT = 7;      // se for maior ou igual que isso ele mostra um segredin
+int _ERRORS_CMD = 0;                // quantidade de erros no terminal
 bool silent = false;                // ve se executa em silencio
 bool autocmd = true;                // ve se pode executar automaticamente ao abrir cmd
 bool exited = false;                // ve se o usuario quer sair
@@ -184,6 +185,91 @@ void COPIAR_PRO_DEFINE(const std::string &MSG)
     metenodefine = false;
 }
 
+void ALL_SETTINGS_MAX()
+{
+    auto ShowBool = [](const std::string &nome, bool valor)
+    {
+        std::string msg = nome + ": " + (valor ? "true" : "false");
+
+        if (valor)
+        {
+            std::cout << icolor::sucess() << msg << icolor::finished() << '\n';
+        }
+        else
+        {
+            std::cout << icolor::error() << msg << icolor::finished() << '\n';
+        }
+    };
+
+    auto ShowString = [](const std::string &nome, const std::string &valor)
+    {
+        std::string msg = nome + ": " + (valor.empty() ? "\"\"" : valor);
+
+        if (valor.empty())
+        {
+            std::cout << icolor::gold() << msg << icolor::finished() << '\n';
+        }
+        else
+        {
+            std::cout << icolor::blue() << msg << icolor::finished() << '\n';
+        }
+    };
+
+    auto ShowInt = [](const std::string &nome, int valor)
+    {
+        std::string msg = nome + ": " + std::to_string(valor);
+
+        if (valor == 0)
+        {
+            std::cout << icolor::gold() << msg << icolor::finished() << '\n';
+        }
+        else
+        {
+            std::cout << icolor::blue() << msg << icolor::finished() << '\n';
+        }
+    };
+
+    ShowString("_DEFINE", _DEFINE);
+    ShowString("_PAST_DEFINE", _PAST_DEFINE);
+    ShowString("_VERSION", _VERSION);
+    ShowInt("_TERMINAL_RODADOS", _TERMINAL_RODADOS);
+    ShowInt("EASTER_EGG_PAIA", EASTER_EGG_PAIA);
+    ShowInt("EASTER_EGG_PAIA_QUANT", EASTER_EGG_PAIA_QUANT);
+    ShowInt("_ERRORS_CMD", _ERRORS_CMD);
+    ShowString("AND_OPERATOR", AND_OPERATOR);
+    ShowString("DELAY_OPERATOR", DELAY_OPERATOR);
+    ShowString("_VAR_1", _VAR_1);
+    ShowString("_VAR_2", _VAR_2);
+    ShowString("_VAR_3", _VAR_3);
+    ShowString("_VAR_4", _VAR_4);
+    ShowString("_VAR_5", _VAR_5);
+    ShowString("_VAR_6", _VAR_6);
+    ShowString("_VAR_7", _VAR_7);
+    ShowString("USER_INPUT", USER_INPUT);
+    ShowString("USER_CALCCD", USER_CALCCD);
+    ShowString("ultimamsgterminal", ultimamsgterminal);
+    ShowString("_APELIDO", _APELIDO);
+    ShowString("WINVERS", VERSAO_WINDOWS());
+    ShowString("_APELIDO_WINDOWS", _APELIDO_WINDOWS);
+    ShowBool("CONFIGS_EXIT", CONFIGS_EXIT);
+    ShowBool("silent", silent);
+    ShowBool("autocmd", autocmd);
+    ShowBool("exited", exited);
+    ShowBool("pularlinhaw", pularlinhaw);
+    ShowBool("metenodefine", metenodefine);
+    ShowBool("IMAGE_CHAR_OPT", IMAGE_CHAR_OPT);
+    ShowBool("discord_disponivel", discord_disponivel);
+    ShowBool("_DISCORD_RPC_VALUE", _DISCORD_RPC_VALUE);
+    ShowBool("_PROMPT_COLOR_VALUE", _PROMPT_COLOR_VALUE);
+    ShowBool("_SOUNDS_VALUE", _SOUNDS_VALUE);
+    ShowBool("_DEFINE_CMD", _DEFINE_CMD);
+    ShowBool("_AUTORUN_CMD", _AUTORUN_CMD);
+    ShowBool("_AUTORUNLOOP_CMD", _AUTORUNLOOP_CMD);
+    ShowBool("_AUTORUNFIRST_CMD", _AUTORUNFIRST_CMD);
+    ShowBool("_CUSTOM_CMD", _CUSTOM_CMD);
+    ShowBool("_SYSTEM_CMD", _SYSTEM_CMD);
+}
+
 void PRINT_ERROR(const std::string &msg, const bool withendl)
 {
     if (silent == false)
@@ -202,6 +288,7 @@ void PRINT_ERROR(const std::string &msg, const bool withendl)
             std::cout << icolor::fatal() << "Erro no sinalizador" << icolor::finished() << std::endl;
         }
     }
+    _ERRORS_CMD += 1;
     COPIAR_PRO_DEFINE(msg);
 }
 
@@ -1969,7 +2056,7 @@ bool KillByPID(DWORD pid)
     return ok;
 }
 
-std::string RemoveQuotes(const std::string& str)
+std::string RemoveQuotes(const std::string &str)
 {
     if (!str.empty() && str[0] == '"')
     {
@@ -2814,6 +2901,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         _VAR_7 = "";
         USER_INPUT = "";
         USER_CALCCD = "";
+        _ERRORS_CMD = 0;
         SetConsoleTitleA(("Terminal MAX - " + _VERSION).c_str());
         CLEAR_TERMINAL();
         ASCII_CALL();
@@ -2987,6 +3075,10 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
 
         SetClipboardData(CF_TEXT, hMem);
         CloseClipboard();
+    }
+    else if (comando == "all_vars" || comando == "av")
+    {
+        ALL_SETTINGS_MAX();
     }
     else // ou da erro ou executa qualquer ngc no path
     {
