@@ -59,7 +59,7 @@ Criado no C++11
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
 std::string _PAST_DEFINE = "";       // salvamento
-std::string _VERSION = "1.1.8";      // versao do terminal
+std::string _VERSION = "1.1.9";      // versao do terminal
 int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
@@ -1047,9 +1047,14 @@ static std::string normalizeQuotes(std::string s)
 {
     s = trim(s);
 
-    while (s.size() >= 2 && s.front() == '"' && s.back() == '"')
+    if (!s.empty() && s[0] == '"')
     {
-        s = s.substr(1, s.size() - 2);
+        size_t endQuote = s.find('"', 1);
+
+        if (endQuote != std::string::npos)
+        {
+            return s.substr(1, endQuote - 1);
+        }
     }
 
     return s;
@@ -1956,18 +1961,44 @@ bool KillByPID(DWORD pid)
 {
     HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
     if (!hProcess)
+    {
         return false;
-
+    }
     bool ok = TerminateProcess(hProcess, 1);
     CloseHandle(hProcess);
     return ok;
 }
-std::string RemoveQuotes(const std::string &str)
+
+std::string RemoveQuotes(const std::string& str)
 {
-    if (str.size() >= 2 && str.front() == '"' && str.back() == '"')
+    if (!str.empty() && str[0] == '"')
     {
-        return str.substr(1, str.size() - 2);
+        size_t endQuote = std::string::npos;
+
+        for (size_t i = 1; i < str.size(); i++)
+        {
+            if (str[i] == '"' && str[i - 1] != '\\')
+            {
+                endQuote = i;
+                break;
+            }
+        }
+
+        if (endQuote != std::string::npos)
+        {
+            std::string result = str.substr(1, endQuote - 1);
+
+            size_t pos = 0;
+            while ((pos = result.find("\\\"", pos)) != std::string::npos)
+            {
+                result.replace(pos, 2, "\"");
+                pos++;
+            }
+
+            return result;
+        }
     }
+
     return str;
 }
 
