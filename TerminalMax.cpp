@@ -59,7 +59,7 @@ Criado no C++11
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
 std::string _PAST_DEFINE = "";       // salvamento
-std::string _VERSION = "1.1.95";      // versao do terminal
+std::string _VERSION = "1.2.0";      // versao do terminal
 int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
@@ -70,6 +70,7 @@ std::string _VAR_4 = "";             // Variavel 4
 std::string _VAR_5 = "";             // Variavel 5
 std::string _VAR_6 = "";             // Variavel 6
 std::string _VAR_7 = "";             // Variavel 7
+std::string mopts_sinal = "> ";      // Sinal do MOPTS
 
 std::string USER_INPUT = "";  // valor do INPUT
 std::string USER_CALCCD = ""; // valor do CALCCD
@@ -94,6 +95,8 @@ bool _AUTORUNLOOP_CMD = true;       // autorun do sistema que roda toda hora
 bool _AUTORUNFIRST_CMD = true;      // primeiro codigo que roda no sistema
 bool _CUSTOM_CMD = true;            // comando personalizado
 bool _SYSTEM_CMD = true;            // comandos do sistema operacional
+bool _VERIFY_CMD = true;            // verificação básica de virus em arquivos .trmax
+bool _SELECT_COLOR = false;         // seleção do MOPTS pintada
 std::string _APELIDO = "";          // apelido do usuario
 std::string _APELIDO_WINDOWS = "";  // apelido do WINDOWS do usuario
 DiscordEventHandlers handlers;
@@ -268,6 +271,8 @@ void ALL_SETTINGS_MAX()
     ShowBool("_AUTORUNFIRST_CMD", _AUTORUNFIRST_CMD);
     ShowBool("_CUSTOM_CMD", _CUSTOM_CMD);
     ShowBool("_SYSTEM_CMD", _SYSTEM_CMD);
+    ShowBool("_VERIFY_CMD", _VERIFY_CMD);
+    ShowBool("_SELECT_COLOR", _SELECT_COLOR);
 }
 
 void PRINT_ERROR(const std::string &msg, const bool withendl)
@@ -830,7 +835,7 @@ void ASCII_CALL()
     if (EASTER_EGG_PAIA >= EASTER_EGG_PAIA_QUANT)
     {
         std::cout << icolor::red() << R"( _/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\_______/\\\________ )" << icolor::finished() << std::endl;
-        std::cout << icolor::red() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/_9.9.99_)" << icolor::finished() << std::endl;
+        std::cout << icolor::red() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/__9.9.9_)" << icolor::finished() << std::endl;
         std::cout << icolor::red() << R"( __\/\\\//\\\____/\\\//\\\__/\\\/////////\\\___\///\\\\\\/_________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ___\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_____\//\\\\__________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ____\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\______\/\\\\_________ )" << icolor::finished() << std::endl;
@@ -842,7 +847,7 @@ void ASCII_CALL()
     else
     {
         std::cout << icolor::blue() << R"( _/\\\\____________/\\\\_____/\\\\\\\\\_____/\\\_______/\\\________ )" << icolor::finished() << std::endl;
-        std::cout << icolor::blue() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/_)" << _VERSION << "_" << icolor::finished() << std::endl;
+        std::cout << icolor::blue() << R"( _\/\\\\\\________/\\\\\\___/\\\\\\\\\\\\\__\///\\\___/\\\/__)" << _VERSION << "_" << icolor::finished() << std::endl;
         std::cout << icolor::blue() << R"( __\/\\\//\\\____/\\\//\\\__/\\\/////////\\\___\///\\\\\\/_________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ___\/\\\\///\\\/\\\/_\/\\\_\/\\\_______\/\\\_____\//\\\\__________ )" << icolor::finished() << std::endl;
         std::cout << icolor::white() << R"( ____\/\\\__\///\\\/___\/\\\_\/\\\\\\\\\\\\\\\______\/\\\\_________ )" << icolor::finished() << std::endl;
@@ -1753,6 +1758,90 @@ void OS_cmd_CHECK()
     }
 }
 
+void virus_file_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _VERIFY_CMD = true;
+        SalvarConfig("_VERIFY_CMD.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _VERIFY_CMD = false;
+        SalvarConfig("_VERIFY_CMD.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void virus_file_CHECK()
+{
+    std::string val = LerConfig("_VERIFY_CMD.cfg");
+
+    if (val == "true")
+    {
+        _VERIFY_CMD = true;
+    }
+    else if (val == "false")
+    {
+        _VERIFY_CMD = false;
+    }
+    else
+    {
+        _VERIFY_CMD = true;
+    }
+}
+
+void color_select_SET(const std::string &what)
+{
+    if (what == "true")
+    {
+        _SELECT_COLOR = true;
+        MOPTS::color = _SELECT_COLOR;
+        MOPTS::all_color_line = _SELECT_COLOR;
+        SalvarConfig("_SELECT_COLOR.cfg", "true");
+    }
+    else if (what == "false")
+    {
+        _SELECT_COLOR = false;
+        MOPTS::color = _SELECT_COLOR;
+        MOPTS::all_color_line = _SELECT_COLOR;
+        SalvarConfig("_SELECT_COLOR.cfg", "false");
+    }
+    else if (what == "voltar")
+    {
+        // nada
+    }
+    else
+    {
+        PRINT_ERROR("Erro no sinalizador", true);
+    }
+}
+
+void color_select_CHECK()
+{
+    std::string val = LerConfig("_SELECT_COLOR.cfg");
+
+    if (val == "true")
+    {
+        _SELECT_COLOR = true;
+    }
+    else if (val == "false")
+    {
+        _SELECT_COLOR = false;
+    }
+    else
+    {
+        _SELECT_COLOR = true;
+    }
+}
+
 void CONFIGS_ABA(const std::string &opt)
 {
     if (opt == "image_char")
@@ -1762,7 +1851,7 @@ void CONFIGS_ABA(const std::string &opt)
             {"Desativar image char", "false", image_char_SET},
             {"Voltar", "voltar", image_char_SET},
         };
-        MOPTS::ShowMenu("Image char", image_char_opts, "> ", "");
+        MOPTS::ShowMenu("Image char", image_char_opts, mopts_sinal, "");
     }
     else if (opt == "apelido")
     {
@@ -1771,7 +1860,7 @@ void CONFIGS_ABA(const std::string &opt)
             {"Reiniciar apelido", "reiniciar", apelido_SET},
             {"Voltar", "voltar", apelido_SET},
         };
-        MOPTS::ShowMenu("Apelido", image_char_opts, "> ", "");
+        MOPTS::ShowMenu("Apelido", image_char_opts, mopts_sinal, "");
     }
     else if (opt == "start_dir")
     {
@@ -1780,7 +1869,7 @@ void CONFIGS_ABA(const std::string &opt)
             {"Resetar para Desktop", "reiniciar", startdir_SET},
             {"Voltar", "voltar", startdir_SET},
         };
-        MOPTS::ShowMenu("Diretório inicial", startdir_opts, "> ", "");
+        MOPTS::ShowMenu("Diretório inicial", startdir_opts, mopts_sinal, "");
     }
     else if (opt == "discord_rpc")
     {
@@ -1789,7 +1878,7 @@ void CONFIGS_ABA(const std::string &opt)
             {"Desativar Discord RPC", "false", discord_rpc_SET},
             {"Voltar", "voltar", discord_rpc_SET},
         };
-        MOPTS::ShowMenu("Discord RPC", discordrpc_opts, "> ", "");
+        MOPTS::ShowMenu("Discord RPC", discordrpc_opts, mopts_sinal, "");
     }
     else if (opt == "system_path")
     {
@@ -1799,87 +1888,107 @@ void CONFIGS_ABA(const std::string &opt)
             {"Voltar", "voltar", system_path_SET},
         };
 
-        MOPTS::ShowMenu("PATH do sistema", path_opts, "> ", "");
+        MOPTS::ShowMenu("PATH do sistema", path_opts, mopts_sinal, "");
     }
     else if (opt == "prompt_color")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption prompt_color[] = {
             {"Adicionar cor no prompt", "add", prompt_color_SET},
             {"Remover cor no prompt", "remove", prompt_color_SET},
             {"Voltar", "voltar", prompt_color_SET},
         };
 
-        MOPTS::ShowMenu("Cor no prompt", path_opts, "> ", "");
+        MOPTS::ShowMenu("Cor no prompt", prompt_color, mopts_sinal, "");
     }
     else if (opt == "sounds")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption sounds[] = {
             {"Ativar sons", "true", sounds_SET},
             {"Desativar sons", "false", sounds_SET},
             {"Voltar", "voltar", sounds_SET},
         };
 
-        MOPTS::ShowMenu("Sons", path_opts, "> ", "");
+        MOPTS::ShowMenu("Sons", sounds, mopts_sinal, "");
     }
     else if (opt == "define_cmd")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption define_cmd[] = {
             {"Ativar comandos no define", "true", define_cmd_SET},
             {"Desativar comandos no define", "false", define_cmd_SET},
             {"Voltar", "voltar", define_cmd_SET},
         };
 
-        MOPTS::ShowMenu("Comandos via define", path_opts, "> ", "");
+        MOPTS::ShowMenu("Comandos via define", define_cmd, mopts_sinal, "");
     }
     else if (opt == "Autorun_cmd")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption Autorun_cmd[] = {
             {"Ativar autorun", "true", autorun_cmd_SET},
             {"Desativar autorun", "false", autorun_cmd_SET},
             {"Voltar", "voltar", autorun_cmd_SET},
         };
 
-        MOPTS::ShowMenu("Autorun", path_opts, "> ", "");
+        MOPTS::ShowMenu("Autorun", Autorun_cmd, mopts_sinal, "");
     }
     else if (opt == "Autorunloop_cmd")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption Autorunloop_cmd[] = {
             {"Ativar autorunLoop", "true", autorunloop_cmd_SET},
             {"Desativar autorunLoop", "false", autorunloop_cmd_SET},
             {"Voltar", "voltar", autorunloop_cmd_SET},
         };
 
-        MOPTS::ShowMenu("autorunLoop", path_opts, "> ", "");
+        MOPTS::ShowMenu("AutorunLoop", Autorunloop_cmd, mopts_sinal, "");
     }
     else if (opt == "Autorunfirst_cmd")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption Autorunfirst_cmd[] = {
             {"Ativar AutorunFirst", "true", autorunfirst_cmd_SET},
             {"Desativar AutorunFirst", "false", autorunfirst_cmd_SET},
             {"Voltar", "voltar", autorunfirst_cmd_SET},
         };
 
-        MOPTS::ShowMenu("AutorunFirst", path_opts, "> ", "");
+        MOPTS::ShowMenu("AutorunFirst", Autorunfirst_cmd, mopts_sinal, "");
     }
     else if (opt == "Custom_cmd")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption Custom_cmd[] = {
             {"Ativar Comandos personalizados", "true", custom_cmd_SET},
             {"Desativar Comandos personalizados", "false", custom_cmd_SET},
             {"Voltar", "voltar", custom_cmd_SET},
         };
 
-        MOPTS::ShowMenu("Comandos personalizados", path_opts, "> ", "");
+        MOPTS::ShowMenu("Comandos personalizados", Custom_cmd, mopts_sinal, "");
     }
     else if (opt == "OS_cmd")
     {
-        MOPTS::MenuOption path_opts[] = {
+        MOPTS::MenuOption OS_cmd[] = {
             {"Ativar Comandos do sistema operacional", "true", OS_cmd_SET},
             {"Desativar Comandos do sistema operacional", "false", OS_cmd_SET},
             {"Voltar", "voltar", OS_cmd_SET},
         };
 
-        MOPTS::ShowMenu("Comandos do sistema operacional", path_opts, "> ", "");
+        MOPTS::ShowMenu("Comandos do sistema operacional", OS_cmd, mopts_sinal, "");
+    }
+    else if (opt == "virus_file")
+    {
+        MOPTS::MenuOption virus_file[] = {
+            {"Ativar Verificação básica de arquivos .trmax maliciosos", "true", virus_file_SET},
+            {"Desativar Verificação básica de arquivos .trmax maliciosos", "false", virus_file_SET},
+            {"Voltar", "voltar", virus_file_SET},
+        };
+
+        MOPTS::ShowMenu("Verificação básica de arquivos .trmax maliciosos", virus_file, mopts_sinal, "");
+    }
+    else if (opt == "color_select")
+    {
+        MOPTS::MenuOption color_select[] = {
+            {"Ativar Cores nas opções", "true", color_select_SET},
+            {"Desativar Cores nas opções", "false", color_select_SET},
+            {"Voltar", "voltar", color_select_SET},
+        };
+
+        MOPTS::ShowMenu("Cores nas opções", color_select, mopts_sinal, "");
     }
     else if (opt == "voltar")
     {
@@ -1994,7 +2103,7 @@ void OPEN(const std::string &caminhoOuURL) // abre
     }
 }
 
-void ReplaceDefine(const std::string& token, const std::string& value)
+void ReplaceDefine(const std::string &token, const std::string &value)
 {
     size_t pos = 0;
 
@@ -2222,6 +2331,8 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
                 {"AutorunFirst", "Autorunfirst_cmd", CONFIGS_ABA},
                 {"Comandos personalizados", "Custom_cmd", CONFIGS_ABA},
                 {"Comandos do sistema operacional", "OS_cmd", CONFIGS_ABA},
+                {"Verificação básica de arquivos .trmax maliciosos", "virus_file", CONFIGS_ABA},
+                {"Cor nas opções", "color_select", CONFIGS_ABA},
 
                 {"Voltar", "voltar", [](const std::string &)
                  {
@@ -2229,7 +2340,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
                  }},
             };
 
-            MOPTS::ShowMenu("Configurações", configs_opts, "> ", "");
+            MOPTS::ShowMenu("Configurações", configs_opts, mopts_sinal, "");
         }
     }
     else if (comando == "image") // manda uma imagem, absurdo
@@ -2296,7 +2407,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         MOPTS::ShowMenu(
             "isso apagará TODAS as configs do TerminalMax\nTem certeza?",
             formatar_cmd_opts,
-            "> ",
+            mopts_sinal,
             "");
     }
 
@@ -3194,6 +3305,21 @@ void EXEC_MULTIPLE(const std::string &linha)
     }
 }
 
+std::vector<std::string> g_script_linhas;
+
+void EXECUTAR_SCRIPT_CONFIRMADO(const std::string &)
+{
+    for (const auto &linha : g_script_linhas)
+    {
+        EXEC_MULTIPLE(linha);
+    }
+}
+
+void CANCELAR_SCRIPT_CONFIRMADO(const std::string &)
+{
+    PRINT_SYS("Cancelando execução...", true);
+}
+
 bool RUN_SCRIPT_FILE(const std::string &arquivo)
 {
     std::wstring wpath = UTF8ToWide(arquivo);
@@ -3212,20 +3338,83 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
         return false;
     }
 
+    std::vector<std::string> linhas;
     char buffer[4096];
 
     while (fgets(buffer, sizeof(buffer), f))
     {
-        std::string linha = buffer;
-        linha = trim(linha);
+        std::string linha = trim(buffer);
 
         if (!linha.empty())
+        {
+            linhas.push_back(linha);
+        }
+    }
+
+    fclose(f);
+
+    std::vector<std::pair<std::string, std::string>> riscos = {
+        {"delfile", "Pode deletar arquivos"},
+        {"rmfile", "Pode deletar arquivos"},
+        {"newfile", "Pode criar arquivos"},
+        {"mkfile", "Pode criar arquivos"},
+        {"mkdir", "Pode criar pastas"},
+        {"rmdir", "Pode deletar pastas"},
+        {"content", "Pode modificar arquivos"},
+        {"power", "Pode desligar o computador"},
+        {"run", "Pode executar outros arquivos"},
+        {"kill", "Pode finalizar tarefas"},
+        {"autorun", "Pode usar o autorun do sistema"},
+        {"notify", "Pode mostrar notificações do sistema"},
+        {"exec", "Pode abrir aplicativos"},
+        {"open", "Pode abrir aplicativos ou sites"},
+        {".cpp", "Pode criar/deletar arquivos C++"},
+        {".py", "Pode criar/deletar arquivos PYTHON"},
+        {".bat", "Pode criar/deletar arquivos BATCH"},
+        {".vbs", "Pode criar/deletar arquivos VBS"},
+        {".exe", "Pode criar/deletar arquivos EXE"},
+        {"TerminalMax.cpp", "Pode modificar o TerminalMAX"},
+        {"TerminalMax.exe", "Pode modificar o TerminalMAX"},
+        {"SENDFILE.bat", "Pode atualizar o TerminalMAX"},
+        {"UPDATER.bat", "Pode compilar o TerminalMAX"},
+    };
+
+    std::string perigos;
+
+    for (const auto &risco : riscos)
+    {
+        for (const auto &linha : linhas)
+        {
+            if (linha.find(risco.first) != std::string::npos)
+            {
+                if (perigos.find(risco.second) == std::string::npos)
+                {
+                    perigos += "- " + risco.second + "\n";
+                }
+                break;
+            }
+        }
+    }
+
+    if (!perigos.empty() && _VERIFY_CMD == true)
+    {
+        g_script_linhas = linhas;
+
+        MOPTS::MenuOption executar_ar_malicioso[] = {
+            {"Executar", "ex", EXECUTAR_SCRIPT_CONFIRMADO},
+            {"Não executar", "nex", CANCELAR_SCRIPT_CONFIRMADO},
+        };
+
+        MOPTS::ShowMenu("CUIDADO!\n\nEste comando pode realizar as seguintes ações:\n" + perigos + "\nVocê realmente quer executar esse comando?\n", executar_ar_malicioso, mopts_sinal, "ALERTA: Esse comando foi feito por terceiros, não recomendo não confiar muito");
+    }
+    else
+    {
+        for (const auto &linha : linhas)
         {
             EXEC_MULTIPLE(linha);
         }
     }
 
-    fclose(f);
     return true;
 }
 
@@ -3275,6 +3464,7 @@ void EXEC_AUTORUN(const std::string &mode)
 int main(int argc, char *argv[])
 {
     autorunfirst_cmd_CHECK();
+    virus_file_CHECK();
     if (_AUTORUNFIRST_CMD == true)
     {
         EXEC_AUTORUN("f");
@@ -3415,8 +3605,6 @@ int main(int argc, char *argv[])
     GetUserNameA(user, &size);
     _APELIDO_WINDOWS = user;
     MOPTS::clear_opts = false;
-    MOPTS::color = false;
-    MOPTS::all_color_line = false;
     sounds_CHECK();
     define_cmd_CHECK();
     autorun_cmd_CHECK();
@@ -3425,6 +3613,7 @@ int main(int argc, char *argv[])
     OS_cmd_CHECK();
     apelido_CHECK();
     image_char_CHECK();
+    color_select_CHECK();
     _DEFINE = LerConfig("H_DEFINE_.cfg"); // salva uma variavel pro terminal
     if (_DISCORD_RPC_VALUE)
     {
@@ -3456,6 +3645,8 @@ int main(int argc, char *argv[])
             std::cout << "\n";
             pularlinhaw = false;
         }
+        MOPTS::color = _SELECT_COLOR;
+        MOPTS::all_color_line = _SELECT_COLOR;
         if (_PROMPT_COLOR_VALUE == true) // ve se pode usar cores
         {
             std::cout << "[" << icolor::blue() << "M" << icolor::finished() << icolor::white() << "A" << icolor::finished() << icolor::blue() << "X" << icolor::finished() << icolor::blue() << icolor::finished() << icolor::neon_green() << "@" << icolor::finished() << icolor::gray_10() << GetCurrentPath() << icolor::finished() << "]> ";
