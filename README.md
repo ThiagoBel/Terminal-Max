@@ -7,7 +7,7 @@ Terminal com muitos comandos poderosos e fáceis de se usar.
 
 ## Por que usar Terminal Max?
 - Terminal simples com comandos curtos e fáceis de decorar.
-- Com suporte ao CMD do Windows (comando: '*>*').
+- Com suporte ao CMD do Windows (comando: '*native*').
 - Diferentes de alguns terminais, Terminal Max inicia no diretório do Desktop, caso não goste, poderá mudar o diretório usando o comando '*configs*' e indo até '*Diretório inicial*'.
 - Suporte do Discord RPC (Podendo desativar ou ativar ela usando o comando '*configs*' e indo até '*Discord RPC*').
 - Com suporte á imagens (ascii), com o comando:

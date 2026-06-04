@@ -59,7 +59,7 @@ Criado no C++11
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
 std::string _PAST_DEFINE = "";       // salvamento
-std::string _VERSION = "1.2.0";      // versao do terminal
+std::string _VERSION = "1.2.1";      // versao do terminal
 int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
@@ -336,6 +336,18 @@ void PRINT_BLUE(const std::string &msg, const bool withendl)
         }
     }
     COPIAR_PRO_DEFINE(msg);
+}
+
+void system_TM(const std::string& ww)
+{
+    if (_SYSTEM_CMD == true)
+    {
+        system(ww.c_str());
+    }
+    else
+    {
+        PRINT_ERROR("Sem permissão para executar comandos do sistema operacional", true);
+    }
 }
 
 std::string OS_DETECTAR()
@@ -718,8 +730,8 @@ void HELP_CMD()
     std::cout << "reopen                     - reinicia o terminal\n";
     std::cout << "exec                       - executa programa definido\n";
     std::cout << "open                       - executa programa ou site definido\n";
-    std::cout << ">                          - executa comando direto do sistema\n";
-    std::cout << ">>                         - executa comando direto do terminal\n";
+    std::cout << "native                     - executa comando direto do sistema\n";
+    std::cout << "tmexec                     - executa comando direto do terminal\n";
     std::cout << "mkfile / newfile           - cria arquivo\n";
     std::cout << "rmfile / delfile           - deleta arquivo\n";
     std::cout << "mkdir / newfolder          - cria pasta\n";
@@ -2517,18 +2529,11 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         PRINT_BLUE("Som da intro        : PixaBay - MagiaZ", true);
         PRINT_BLUE("Som do beep         : PixaBay - freesound_community", true);
     }
-    else if (comando == ">")
+    else if (comando == "native")
     {
-        if (_SYSTEM_CMD == true)
-        {
-            system(_DEFINE.c_str());
-        }
-        else
-        {
-            PRINT_ERROR("Sem permissão para executar comandos do sistema operacional!", true);
-        }
+        system_TM(_DEFINE);
     }
-    else if (comando == ">>")
+    else if (comando == "tmexec")
     {
         COMANDOS_EXEC(_DEFINE);
     }
@@ -3360,7 +3365,11 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
         {"mkfile", "Pode criar arquivos"},
         {"mkdir", "Pode criar pastas"},
         {"rmdir", "Pode deletar pastas"},
+        {"read_file", "Pode ler arquivos"},
+        {"$file", "Pode ler arquivos"},
         {"content", "Pode modificar arquivos"},
+        {"local", "Pode mudar de diretório"},
+        {"native", "Pode executar comandos do terminal do sistema operacional"},
         {"power", "Pode desligar o computador"},
         {"run", "Pode executar outros arquivos"},
         {"kill", "Pode finalizar tarefas"},
@@ -3368,13 +3377,14 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
         {"notify", "Pode mostrar notificações do sistema"},
         {"exec", "Pode abrir aplicativos"},
         {"open", "Pode abrir aplicativos ou sites"},
-        {".cpp", "Pode criar/deletar arquivos C++"},
-        {".py", "Pode criar/deletar arquivos PYTHON"},
-        {".bat", "Pode criar/deletar arquivos BATCH"},
-        {".vbs", "Pode criar/deletar arquivos VBS"},
-        {".exe", "Pode criar/deletar arquivos EXE"},
+        {".cpp", "Pode criar/deletar/executar/ler arquivos C++"},
+        {".py", "Pode criar/deletar/executar/ler arquivos PYTHON"},
+        {".bat", "Pode criar/deletar/executar/ler arquivos BATCH"},
+        {".vbs", "Pode criar/deletar/executar/ler arquivos VBS"},
+        {".exe", "Pode criar/deletar/executar arquivos EXE"},
         {"TerminalMax.cpp", "Pode modificar o TerminalMAX"},
         {"TerminalMax.exe", "Pode modificar o TerminalMAX"},
+        {"[cmd=CONFIGS_]", "Pode configurar as configurações do TerminalMAX"},
         {"SENDFILE.bat", "Pode atualizar o TerminalMAX"},
         {"UPDATER.bat", "Pode compilar o TerminalMAX"},
     };
