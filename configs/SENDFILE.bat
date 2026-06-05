@@ -10,6 +10,7 @@ if errorlevel 1 (
     echo.
     echo Erro ao baixar atualização
     pause
+    start TerminalMax.exe
     exit /b 1
 )
 

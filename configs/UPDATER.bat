@@ -18,9 +18,10 @@ if %errorlevel% neq 0 (
     color 04
     echo Erro ao compilar.
     pause
+    start TerminalMax.exe
     exit /b
 )
 
-start TerminalMax.exe
 echo TerminalMax atualizado com sucesso
 timeout /t 1 /nobreak >nul
+start TerminalMax.exe
