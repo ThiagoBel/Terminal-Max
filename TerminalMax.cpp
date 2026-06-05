@@ -59,7 +59,7 @@ Criado no C++11
 #include "configs/discord/discord_rpc.h"
 std::string _DEFINE = "";            // negocio definido
 std::string _PAST_DEFINE = "";       // salvamento
-std::string _VERSION = "1.2.1";      // versao do terminal
+std::string _VERSION = "1.2.2";      // versao do terminal
 int _TERMINAL_RODADOS = 0;           // mostra quantas vezes o terminal foi rodado
 std::string AND_OPERATOR = "&&&&";   // adiciona comandos
 std::string DELAY_OPERATOR = "@@@@"; // adiciona comandos + delay
@@ -338,7 +338,7 @@ void PRINT_BLUE(const std::string &msg, const bool withendl)
     COPIAR_PRO_DEFINE(msg);
 }
 
-void system_TM(const std::string& ww)
+void system_TM(const std::string &ww)
 {
     if (_SYSTEM_CMD == true)
     {
@@ -2077,7 +2077,7 @@ std::string RemoverComentario(const std::string &linha)
     return trim(linha);
 }
 
-bool RUN_SCRIPT_FILE(const std::string &arquivo);
+bool RUN_SCRIPT_FILE(const std::string &arquivo, const std::string &mode);
 
 void OPEN(const std::string &caminhoOuURL) // abre
 {
@@ -2246,7 +2246,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
         DWORD attr = GetFileAttributesA(customPath.c_str());
         if (attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY))
         {
-            RUN_SCRIPT_FILE(customPath);
+            RUN_SCRIPT_FILE(customPath, "customcmd");
             SalvarConfig("_LAST_COMMAND.cfg", comandoOriginal);
             return;
         }
@@ -2516,7 +2516,7 @@ void COMANDOS_EXEC(const std::string &comandoOriginal) // TODOS os comandos
     {
         if (!_DEFINE.empty())
         {
-            RUN_SCRIPT_FILE(_DEFINE);
+            RUN_SCRIPT_FILE(_DEFINE, "cmd");
         }
         else
         {
@@ -3325,15 +3325,25 @@ void CANCELAR_SCRIPT_CONFIRMADO(const std::string &)
     PRINT_SYS("Cancelando execução...", true);
 }
 
-bool RUN_SCRIPT_FILE(const std::string &arquivo)
+bool RUN_SCRIPT_FILE(const std::string &arquivo, const std::string &mode)
 {
+    bool perm = false;
+    std::string modeee = "arquivo";
     std::wstring wpath = UTF8ToWide(arquivo);
 
     FILE *f = fopen(arquivo.c_str(), "r");
 
     if (!f)
     {
-        wpath = UTF8ToWide(arquivo + ".trmax");
+        std::string arquivoFinal = arquivo;
+
+        if (arquivo.size() < 6 ||
+            arquivo.substr(arquivo.size() - 6) != ".trmax")
+        {
+            arquivoFinal += ".trmax";
+        }
+
+        wpath = UTF8ToWide(arquivoFinal);
         f = _wfopen(wpath.c_str(), L"r");
     }
 
@@ -3341,6 +3351,24 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
     {
         PRINT_ERROR("Erro, não foi possível abrir o arquivo", true);
         return false;
+    }
+
+    if (mode == "args" || mode == "cmd" || mode == "customcmd")
+    {
+        perm = true;
+    }
+
+    if (mode == "args")
+    {
+        modeee = "arg";
+    }
+    else if (mode == "cmd")
+    {
+        modeee = "arquivo";
+    }
+    else if (mode == "customcmd")
+    {
+        modeee = "comando";
     }
 
     std::vector<std::string> linhas;
@@ -3406,7 +3434,7 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
         }
     }
 
-    if (!perigos.empty() && _VERIFY_CMD == true)
+    if (!perigos.empty() && _VERIFY_CMD == true && perm == true)
     {
         g_script_linhas = linhas;
 
@@ -3415,7 +3443,7 @@ bool RUN_SCRIPT_FILE(const std::string &arquivo)
             {"Não executar", "nex", CANCELAR_SCRIPT_CONFIRMADO},
         };
 
-        MOPTS::ShowMenu("CUIDADO!\n\nEste comando pode realizar as seguintes ações:\n" + perigos + "\nVocê realmente quer executar esse comando?\n", executar_ar_malicioso, mopts_sinal, "ALERTA: Esse comando foi feito por terceiros, não recomendo não confiar muito");
+        MOPTS::ShowMenu("CUIDADO!\n\nEste " + modeee + " pode realizar as seguintes ações:\n" + perigos + "\nVocê realmente quer executar esse " + modeee + "?\n", executar_ar_malicioso, mopts_sinal, "ALERTA: Esse " + modeee + " pode ter feito por terceiros, não recomendo não confiar muito");
     }
     else
     {
@@ -3463,7 +3491,7 @@ void EXEC_AUTORUN(const std::string &mode)
             {
                 arquivo = GetExeFolder() + "\\configs\\autorunfirst\\" + data.cFileName;
             }
-            RUN_SCRIPT_FILE(arquivo);
+            RUN_SCRIPT_FILE(arquivo, "autorun");
         }
 
     } while (FindNextFileA(hFind, &data));
@@ -3572,7 +3600,7 @@ int main(int argc, char *argv[])
         {
             if (i + 1 < argc)
             {
-                if (RUN_SCRIPT_FILE(argv[i + 1]))
+                if (RUN_SCRIPT_FILE(argv[i + 1], "args"))
                 {
                     ranFromArgs = true;
                 }
